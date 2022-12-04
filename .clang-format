@@ -1,0 +1,9 @@
+BasedOnStyle: Google
+# If true, analyze the formatted file for the most common alignment of & and *. Pointer and reference alignment styles are going to be updated according to the preferences found in the file. PointerAlignment is then used only as fallback.
+DerivePointerAlignment: false
+PointerAlignment: Right
+
+ColumnLimit: 120
+
+# Default for clang-8, changed in later clangs. Set explicitly for forwards compatibility
+IncludeBlocks: Preserve
