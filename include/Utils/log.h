@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Utils/list.h>
 #include <sys/time.h>
 #include <cstddef>
 #include <fstream>
@@ -13,6 +12,8 @@
 #include <string>
 #include <thread>
 #include <utility>
+
+#include <Utils/list.h>
 #include "Thread/mutex.h"
 #include "Thread/thread.h"
 

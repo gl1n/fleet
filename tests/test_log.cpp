@@ -1,8 +1,9 @@
-#include <Utils/log.h>
 #include <chrono>
 #include <memory>
 #include <string>
 #include <thread>
+
+#include <Utils/log.h>
 
 int main() {
   LOG_DEFAULT;

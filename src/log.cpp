@@ -1,4 +1,3 @@
-#include <Utils/log.h>
 #include <bits/types/struct_timeval.h>
 #include <sys/select.h>
 #include <array>
@@ -10,6 +9,8 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+
+#include <Utils/log.h>
 #include "Utils/utils.h"
 
 namespace fleet {

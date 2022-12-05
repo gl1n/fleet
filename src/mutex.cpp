@@ -1,8 +1,9 @@
-#include "Thread/mutex.h"
 #include <semaphore.h>
 #include <sys/types.h>
 #include <exception>
 #include <stdexcept>
+
+#include "Thread/mutex.h"
 
 namespace fleet {
 Semaphore::Semaphore(u_int32_t count) {

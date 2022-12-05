@@ -1,9 +1,10 @@
-#include "Thread/thread.h"
 #include <bits/types/locale_t.h>
 #include <pthread.h>
 #include <functional>
 #include <stdexcept>
 #include <utility>
+
+#include "Thread/thread.h"
 #include "Utils/log.h"
 #include "Utils/utils.h"
 
