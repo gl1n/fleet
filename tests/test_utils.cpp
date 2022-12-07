@@ -8,6 +8,6 @@ int main() {
   LOG_DEFAULT;
   test_backtrace();
   ASSERT(2 == 2);
-  ASSERT(1 == 2);
+  ASSERT2(1 == 2, abc);
   return 0;
 }
