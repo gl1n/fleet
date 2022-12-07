@@ -1,7 +1,15 @@
+#include <cxxabi.h>
+#include <execinfo.h>  //for backtrace/backtrace_symbols
 #include <pthread.h>
 #include <unistd.h>
+#include <cstddef>
+#include <cstdlib>
 #include <cstring>
+#include <sstream>
+#include <string>
+#include <vector>
 
+#include "Utils/log.h"
 #include "Utils/utils.h"
 
 namespace fleet {
@@ -15,5 +23,28 @@ std::string get_thread_name() {
   pthread_getname_np(pthread_self(), thread_name, 16);
 
   return thread_name;
+}
+
+static void back_trace(int size, int skip, std::vector<std::string> &bt) {
+  void **buffer = (void **)malloc(sizeof(void *) * size);
+  auto num = backtrace(buffer, size);
+  auto raw = backtrace_symbols(buffer, num);
+  if (raw == NULL) {
+    ErrorL << "backtrace error";
+    return;
+  }
+  for (auto i = skip; i < num; i++) {
+    bt.push_back(raw[i]);
+  }
+}
+
+std::string backtrace_to_string(int size, int skip, const std::string &prefix) {
+  std::vector<std::string> bt;
+  back_trace(size, 1, bt);
+  std::stringstream ss;
+  for (auto const &item : bt) {
+    ss << prefix << item;
+  }
+  return ss.str();
 }
 }  // namespace fleet
