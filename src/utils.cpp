@@ -36,6 +36,8 @@ static void back_trace(int size, int skip, std::vector<std::string> &bt) {
   for (auto i = skip; i < num; i++) {
     bt.push_back(raw[i]);
   }
+  free(buffer);
+  free(raw);
 }
 
 std::string backtrace_to_string(int size, int skip, const std::string &prefix) {
