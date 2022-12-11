@@ -1,4 +1,5 @@
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -20,22 +21,21 @@ int main(int argc, char **argv) {
   int arg = 123456;
 
   for (int i = 0; i < 3; i++) {
-    auto pth = std::make_shared<fleet::Thread>(
-        [arg]() {
-          InfoL << "name: " << fleet::Thread::s_get_name();
-          InfoL << " this.name " << fleet::Thread::s_get_this()->get_name();
-          InfoL << "thread name: " << fleet::get_thread_name();
-          InfoL << "id: " << fleet::get_thread_id();
-          InfoL << "this.id: " << fleet::Thread::s_get_this()->get_id();
+    auto cb = [arg]() {
+      InfoL << "name: " << fleet::Thread::s_get_name();
+      InfoL << " this.name " << fleet::Thread::s_get_this()->get_name();
+      InfoL << "thread name: " << fleet::get_thread_name();
+      InfoL << "id: " << fleet::get_thread_id();
+      InfoL << "this.id: " << fleet::Thread::s_get_this()->get_id();
 
-          InfoL << "arg: " << arg;
+      InfoL << "arg: " << arg;
 
-          for (int i = 0; i < 10000; i++) {
-            fleet::Mutex::Lock lock(s_mutex);
-            count++;
-          }
-        },
-        "thread_" + std::to_string(i));
+      for (int i = 0; i < 10000; i++) {
+        fleet::Mutex::Lock lock(s_mutex);
+        count++;
+      }
+    };
+    auto pth = std::make_shared<fleet::Thread>(cb, "thread_" + std::to_string(i));
 
     ths.push_back(pth);
   }
