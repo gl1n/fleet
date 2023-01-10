@@ -39,7 +39,7 @@ using StackAllocator = MallocStackAllocatorr;
 Fiber::Fiber() {
   _state = RUNNING;
   running_fiber = this;
-  _id = s_fiber_id++;
+  _id = ++s_fiber_id;  //协程id非零
 
   if (getcontext(&_ctx) == -1) {
     ASSERT2(false, getcontext);
@@ -49,17 +49,17 @@ Fiber::Fiber() {
   // DebugL << "Fiber::Fiber main";
 }
 
+// 这里cb只能传右值，不能传左值
 Fiber::Fiber(std::function<void()> &&cb, size_t stack_size, bool run_in_schduler)
-    : _id(s_fiber_id++), _cb(std::forward<std::function<void()>>(cb)), _run_in_scheduler(run_in_schduler) {
+    : _id(++s_fiber_id), _cb(std::forward<std::function<void()>>(cb)), _run_in_scheduler(run_in_schduler) {
   //如果主协程未创建，先创建主协程
   if (UNLIKELY(!main_fiber_of_this_thread)) {
     // 创建主协程
-    // auto main_fiber = std::make_shared<Fiber>();
-    auto main_fiber = Fiber::Ptr(new Fiber);
-    //判断主协程的指针是否已被current_fiber保存
-    ASSERT(running_fiber == main_fiber.get());
-    // 保存主协程指针
-    main_fiber_of_this_thread = main_fiber;
+    // auto main_fiber = std::make_shared<Fiber>(); //private构造函数不能用make_shared调用
+    main_fiber_of_this_thread = Fiber::Ptr(new Fiber);
+
+    // 创建主协程的构造函数Fiber()会将running_fiber置为主协程的this指针，所以下面这行应为true
+    // ASSERT(running_fiber == main_fiber_of_this_thread.get());
   }
 
   s_fiber_count++;
@@ -74,6 +74,7 @@ Fiber::Fiber(std::function<void()> &&cb, size_t stack_size, bool run_in_schduler
   _ctx.uc_stack.ss_sp = _stack;
   _ctx.uc_stack.ss_size = _stack_size;
 
+  // 将man_func绑定到_ctx上，但不会立即执行
   makecontext(&_ctx, &Fiber::main_func, 0);
 }
 Fiber::~Fiber() {
@@ -94,6 +95,7 @@ Fiber::~Fiber() {
 }
 
 void Fiber::reuse(std::function<void()> &&cb) {
+  // 满足这些条件才能reuse
   ASSERT(_stack);
   ASSERT(_state == TERMINATED || _state == EXCEPT || _state == INIT);
 
@@ -115,7 +117,7 @@ void Fiber::swap_in() {
   running_fiber = this;
   ASSERT(_state != RUNNING);
   _state = RUNNING;
-  if (swapcontext(&(main_fiber_of_this_thread->_ctx), &_ctx)) {
+  if (swapcontext(&(main_fiber_of_this_thread->_ctx), &_ctx) == -1) {
     ASSERT2(false, swapcontext);
   }
 }
@@ -125,7 +127,7 @@ void Fiber::swap_out() {
 
   running_fiber = main_fiber_of_this_thread.get();
 
-  if (swapcontext(&_ctx, &(main_fiber_of_this_thread->_ctx))) {
+  if (swapcontext(&_ctx, &(main_fiber_of_this_thread->_ctx)) == -1) {
     ASSERT2(false, swapcontext);
   }
 }
@@ -133,7 +135,7 @@ void Fiber::swap_out() {
 void Fiber::yield_to_hold() {
   Fiber::Ptr cur = running_fiber->shared_from_this();
   ASSERT(cur->_state == RUNNING);
-  cur->_state = READY;
+  cur->_state = HOLD;
   cur->swap_out();
 }
 
@@ -148,11 +150,11 @@ uint64_t Fiber::get_fiber_id() {
   if (running_fiber) {
     return running_fiber->get_id();
   }
-  return 0;
+  return 0;  //代表线程中没有任何协程运行
 }
 
 void Fiber::main_func() {
-  // 只有this调用swap_in才会执行此函数，所以running_fiber一定不为空
+  // 调用swap_in才会执行此函数，所以running_fiber一定不为空
   auto cur = running_fiber;
   ASSERT(cur);
   try {
