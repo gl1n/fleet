@@ -30,8 +30,8 @@ int main(int argc, char **argv) {
     ths.push_back(th);
   }
 
-  for (int i = 0; i < 3; i++) {
-    ths[i]->join();
+  for (auto &t : ths) {
+    t->join();
   }
 
   return 0;

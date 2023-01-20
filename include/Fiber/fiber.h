@@ -14,13 +14,13 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
   enum State {
     // 初始状态
     INIT,
-    //暂停状态
+    // 暂停状态
     HOLD,
-    //就绪态
+    // 就绪态
     READY,
-    //运行态
+    // 运行态
     RUNNING,
-    //结束态
+    // 结束态
     TERMINATED,
     // 异常状态
     EXCEPT
@@ -49,6 +49,9 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
   State get_state() const { return _state; }
 
  public:
+  // 返回当前所在的协程
+  static Fiber::Ptr get_this();
+
   static void yield_to_hold();
 
   static void yield_to_ready();
@@ -65,17 +68,17 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
   static void main_func();
 
  private:
-  //协程id
+  // 协程id
   u_int64_t _id = 0;
-  //协程栈大小
+  // 协程栈大小
   u_int64_t _stack_size = 0;
-  //协程状态
+  // 协程状态
   State _state = READY;
-  //协程上下文
+  // 协程上下文
   ucontext_t _ctx;
-  //协程栈地址
+  // 协程栈地址
   void *_stack = nullptr;
-  //协程入口函数
+  // 协程入口函数
   std::function<void()> _cb;
   // 是否参与调度器调优
   bool _run_in_scheduler;
