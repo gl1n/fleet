@@ -21,8 +21,9 @@ static std::atomic<uint64_t> s_fiber_id{0};
 // 全局静态变量，用于统计当前协程数
 static std::atomic<uint64_t> s_fiber_count{0};
 
-// 保存当前线程正在执行的协程
+// 指向当前线程正在执行的协程
 static thread_local Fiber *t_running_fiber = nullptr;
+// 保存主协程的上下文
 static thread_local Fiber::Ptr t_main_fiber_of_this_thread = nullptr;
 
 /**
