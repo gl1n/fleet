@@ -52,7 +52,7 @@ Fiber::Fiber() {
 
 // 这里cb只能传右值，不能传左值
 Fiber::Fiber(std::function<void()> &&cb, size_t stack_size, bool run_in_schduler)
-    : _cb(std::forward<std::function<void()>>(cb)), _run_in_scheduler(run_in_schduler) {
+    : _cb(std::move(cb)), _run_in_scheduler(run_in_schduler) {
   get_this();          // 如果没有主协程，创建之
   _id = ++s_fiber_id;  // 要在主协程创建之后取id
   s_fiber_count++;
@@ -106,7 +106,7 @@ void Fiber::reuse(std::function<void()> &&cb) {
   _state = INIT;
 }
 
-void Fiber::swap_in() {
+void Fiber::call() {
   t_running_fiber = this;
   ASSERT(_state != RUNNING);
   _state = RUNNING;
@@ -115,7 +115,7 @@ void Fiber::swap_in() {
   }
 }
 
-void Fiber::swap_out() {
+void Fiber::back() {
   ASSERT(this == t_running_fiber);
 
   t_running_fiber = t_main_fiber_of_this_thread.get();
@@ -142,14 +142,14 @@ void Fiber::yield_to_hold() {
 
   ASSERT(cur->_state == RUNNING);
   cur->_state = HOLD;
-  cur->swap_out();
+  cur->back();
 }
 
 void Fiber::yield_to_ready() {
   Fiber::Ptr cur = get_this();
   ASSERT(cur->_state == RUNNING);
   cur->_state = READY;
-  cur->swap_out();
+  cur->back();
 }
 
 uint64_t Fiber::get_fiber_id() {
@@ -176,7 +176,7 @@ void Fiber::main_func() {
      ErrorL << "Fiber Exception: " << " fiber id = " << cur->get_id();
      ErrorL << backtrace_to_string();
    }*/
-  cur->swap_out();
+  cur->back();
 
   ASSERT2(false, "never reach");
 }
