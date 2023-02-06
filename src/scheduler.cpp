@@ -105,7 +105,7 @@ void Scheduler::stop() {
 }
 
 void Scheduler::run() {
-  DebugL << _name << "run";
+  DebugL << _name << " run";
   t_scheduler = this;  // 每个线程都要记录调度器
   if (fleet::get_thread_id() != _root_thread) {
     // 不是主线程，该线程的主协程就是调度协程

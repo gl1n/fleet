@@ -1,5 +1,6 @@
 
 #include <unistd.h>
+#include <memory>
 #include "Fiber/scheduler.h"
 #include "Utils/log.h"
 #include "Utils/utils.h"
@@ -15,13 +16,14 @@ void test_fiber() {
 }
 
 int main() {
-  LOG_DEFAULT;
   fleet::Logger::Instance().set_async();
+  fleet::Logger::Instance().add_channel(std::make_shared<fleet::FileChannel>());
 
   InfoL << "main";
-  fleet::Scheduler sc(3, false, "test");
+  fleet::Scheduler sc(2, false, "test");
+  InfoL << "Scheduler constructed";
   sc.start();
-  sleep(2);
+  sleep(1);
   InfoL << "schedule";
   sc.schedule(test_fiber);
   sc.stop();
