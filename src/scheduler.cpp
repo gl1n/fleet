@@ -70,25 +70,25 @@ void Scheduler::stop() {
     if (stopping()) {
       return;
     }
+  }
 
-    // use_caller
-    if (_root_thread != -1) {
-      ASSERT(s_get_this() == this);
-    } else {
-      ASSERT(s_get_this() != this);
-    }
-    _stopping = true;
-    for (size_t i = 0; i < _thread_count; i++) {
-      notify();
-    }
-    if (_root_fiber) {
-      notify();
-    }
+  // use_caller
+  if (_root_thread != -1) {
+    ASSERT(s_get_this() == this);
+  } else {
+    ASSERT(s_get_this() != this);
+  }
+  _stopping = true;
+  for (size_t i = 0; i < _thread_count; i++) {
+    notify();
+  }
+  if (_root_fiber) {
+    notify();
+  }
 
-    if (_root_fiber) {
-      if (!stopping()) {
-        _root_fiber->call();  // 执行_root_fiber，也是执行run方法
-      }
+  if (_root_fiber) {
+    if (!stopping()) {
+      _root_fiber->call();  // 执行_root_fiber，也是执行run方法
     }
   }
 
@@ -115,7 +115,7 @@ void Scheduler::run() {
   Fiber::Ptr idle_fiber(new Fiber([this]() { idle(); }));
 
   while (true) {
-    bool notify_me = true;
+    bool notify_me = false;
 
     FiberAndThread::Ptr ft = nullptr;
 

@@ -6,7 +6,7 @@
 #include "Utils/utils.h"
 
 void test_fiber() {
-  static int s_count = 5;
+  static int s_count = 3;
   InfoL << "test in fiber s_count = " << s_count;
 
   sleep(1);
@@ -18,6 +18,7 @@ void test_fiber() {
 int main() {
   fleet::Logger::Instance().set_async();
   fleet::Logger::Instance().add_channel(std::make_shared<fleet::FileChannel>());
+  fleet::Logger::Instance().add_channel(std::make_shared<fleet::ConsoleChannel>());
 
   InfoL << "main";
   fleet::Scheduler sc(2, false, "test");
