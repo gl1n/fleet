@@ -23,11 +23,11 @@ Logger &Logger::Instance() {
 
 Logger::~Logger() { InfoL << "Program ends."; }
 
-//写到_channels中
+// 写到_channels中
 void Logger::write_event(LogEvent::Ptr event) {
-  if (_writer) {  //异步
+  if (_writer) {  // 异步
     _writer->push_event(event, this);
-  } else {  //同步
+  } else {  // 同步
     write_to_channels(event);
   }
 }
@@ -45,7 +45,7 @@ void Logger::set_async() { _writer = std::make_shared<AsyncWriter>(); }
 /*******************LogEvent*******************/
 LogEvent::LogEvent(LogLevel level, const char *file, const char *function, int line)
     : _level(level), _file(strrchr(file, '/') + 1), _function(function), _line(line) {
-  gettimeofday(&_tv, nullptr);  //获取时间，精确到毫秒
+  gettimeofday(&_tv, nullptr);  // 获取时间，精确到毫秒
   _thread_id = get_thread_id();
 }
 
@@ -73,9 +73,9 @@ AsyncWriter::AsyncWriter() : _exit(false) {
 
 AsyncWriter::~AsyncWriter() {
   _exit = true;
-  _sem.post();  //让run线程的_sem.wait()通过，从而跳出循环
+  _sem.post();  // 让run线程的_sem.wait()通过，从而跳出循环
   _thread->join();
-  flush_all();  //处理run线程结束之后，this正式析构之前的Events
+  flush_all();  // 处理run线程结束之后，this正式析构之前的Events
 }
 void AsyncWriter::push_event(LogEvent::Ptr event, Logger *logger) {
   {
@@ -102,7 +102,7 @@ void AsyncWriter::flush_all() {
 
 /*******************LogChannel*******************/
 void LogChannel::format(LogEvent::Ptr event, std::ostream &stream, bool if_color) {
-  //时间
+  // 时间
   stream << '[';
   char sec[64], ms[64];
   auto lct = localtime(&(event->_tv.tv_sec));
@@ -111,7 +111,7 @@ void LogChannel::format(LogEvent::Ptr event, std::ostream &stream, bool if_color
   stream << ms;
   stream << "] ";
 
-  //日志等级
+  // 日志等级
   static std::array<std::string, 5> color{"34", "32", "37", "33", "31"};
 #define CASE(level)                                                                     \
   case LogLevel::level:                                                                 \
@@ -120,8 +120,9 @@ void LogChannel::format(LogEvent::Ptr event, std::ostream &stream, bool if_color
     }                                                                                   \
     stream << std::setw(5) << #level;                                                   \
     if (if_color) {                                                                     \
-      stream << "\033[0m ";                                                             \
+      stream << "\033[0m";                                                              \
     }                                                                                   \
+    stream << " ";                                                                      \
     break;
   switch (event->_level) {
     CASE(Trace)
@@ -132,7 +133,7 @@ void LogChannel::format(LogEvent::Ptr event, std::ostream &stream, bool if_color
   }
 #undef CASE
 
-  //文件信息
+  // 文件信息
   stream << event->_file;
   stream << " ";
   stream << event->_function;
@@ -140,12 +141,12 @@ void LogChannel::format(LogEvent::Ptr event, std::ostream &stream, bool if_color
   stream << event->_line;
   stream << " ";
 
-  //线程号
+  // 线程号
   stream << '<';
   stream << event->_thread_id;
   stream << "> ";
 
-  //日志内容
+  // 日志内容
   if (if_color) {
     stream << "\033[1;" << color[static_cast<unsigned long>(event->_level)] << "m";
   }
@@ -159,7 +160,7 @@ void ConsoleChannel::write(LogEvent::Ptr event) { format(event, std::cout, true)
 
 FileChannel::FileChannel() {
   struct timeval tv;
-  gettimeofday(&tv, nullptr);  //获取时间
+  gettimeofday(&tv, nullptr);  // 获取时间
   char time_buf[64];
   auto lct = localtime(&(tv.tv_sec));
   strftime(time_buf, sizeof time_buf, "%Y-%m-%d-%H_%M_%S", lct);
