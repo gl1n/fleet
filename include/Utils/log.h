@@ -22,38 +22,42 @@ namespace fleet {
 class LogEvent;
 class LogChannel;
 class AsyncWriter;
+class LogEventCapture;
 
 enum class LogLevel { Trace, Debug, Info, Warn, Error };
 class Logger {
+  friend AsyncWriter;
+  friend LogEventCapture;
+
  public:
   using Ptr = std::shared_ptr<Logger>;
 
  public:
-  //单例
+  // 单例
   static Logger &Instance();
-  Logger(const Logger &) = delete;             //禁用复制构造函数
-  Logger &operator=(const Logger &) = delete;  //禁用赋值函数
-  //析构函数
+  Logger(const Logger &) = delete;             // 禁用复制构造函数
+  Logger &operator=(const Logger &) = delete;  // 禁用赋值函数
+  // 析构函数
   ~Logger();
 
-  //写event
-  void write_event(std::shared_ptr<LogEvent> event);
-  //增加channel
+  // 增加channel
   void add_channel(std::shared_ptr<LogChannel> ch);
-  //写到_channels中
-  void write_to_channels(std::shared_ptr<LogEvent> event);
-  //设置为异步
+  // 设置为异步
   void set_async();
 
  private:
-  //单例
-  Logger() {}  //默认同步
+  // 单例
+  Logger() {}  // 默认同步
+  // 写event
+  void write_event(std::shared_ptr<LogEvent> event);
+  // 写到_channels中
+  void write_to_channels(std::shared_ptr<LogEvent> event);
 
  private:
-  std::list<std::shared_ptr<LogChannel>> _channels;  //输出目的地
+  std::list<std::shared_ptr<LogChannel>> _channels;  // 输出目的地
   std::shared_ptr<AsyncWriter> _writer;
-  //注意：_writer必须在_channels析构之前析构。
-  //可以让_writer后于_channels声明，也可以在析构函数中显式地调用reset方法
+  // 注意：_writer必须在_channels析构之前析构。
+  // 可以让_writer后于_channels声明，也可以在析构函数中显式地调用reset方法
 };
 
 class LogEvent : public std::ostringstream {
@@ -75,12 +79,12 @@ class LogEventCapture {
  public:
   LogEventCapture(Logger &logger, LogLevel level, const char *file, const char *function, int line);
 
-  //移动拷贝构造函数
+  // 移动拷贝构造函数
   LogEventCapture(LogEventCapture &&other);
 
   ~LogEventCapture();
 
-  //模板不能放在cpp里
+  // 模板不能放在cpp里
   template <class T>
   LogEventCapture &operator<<(T &&data) {
     *_event << std::forward<T>(data);
@@ -90,8 +94,8 @@ class LogEventCapture {
   void clear();
 
  private:
-  Logger &_logger;       //目标logger
-  LogEvent::Ptr _event;  //生成的event
+  Logger &_logger;       // 目标logger
+  LogEvent::Ptr _event;  // 生成的event
 };
 
 class AsyncWriter {
@@ -139,7 +143,7 @@ class FileChannel : public LogChannel {
 }  // namespace fleet
 
 /*********************宏定义***********************/
-//无名对象的生命周期只有一个语句，不会等到scope结束
+// 无名对象的生命周期只有一个语句，不会等到scope结束
 #define LOG(level) fleet::LogEventCapture(fleet::Logger::Instance(), level, __FILE__, __FUNCTION__, __LINE__)
 
 #define TraceL LOG(fleet::LogLevel::Trace)
