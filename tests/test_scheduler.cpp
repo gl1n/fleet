@@ -21,7 +21,7 @@ int main() {
   fleet::Logger::Instance().add_channel(std::make_shared<fleet::ConsoleChannel>());
 
   InfoL << "main";
-  fleet::Scheduler sc(2, false, "test");
+  fleet::Scheduler sc(1, true, "test");
   InfoL << "Scheduler constructed";
   sc.start();
   sleep(1);

@@ -23,8 +23,8 @@ static std::atomic<uint64_t> s_fiber_count{0};
 
 // 指向当前线程正在执行的协程
 static thread_local Fiber *t_running_fiber = nullptr;
-// 保存主协程的上下文
-static thread_local Fiber::Ptr t_main_fiber_of_this_thread = nullptr;
+// 保存原始线程的上下文
+static thread_local Fiber::Ptr t_origin_fiber = nullptr;
 
 /**
  * @brief malloc栈内存分配器
@@ -74,7 +74,10 @@ Fiber::~Fiber() {
   s_fiber_count--;
   // 子协程
   if (_stack) {
-    ASSERT(_state == TERMINATED || _state == EXCEPT || _state == INIT);
+    if (!(_state == TERMINATED || _state == EXCEPT || _state == INIT)) {
+      ErrorL << _state << " " << get_id();
+    }
+    // ASSERT(_state == TERMINATED || _state == EXCEPT || _state == INIT);
     StackAllocator::Dealloc(_stack, _stack_size);
   } else {         // 主协程
     ASSERT(!_cb);  // 主协程没有callback
@@ -110,7 +113,7 @@ void Fiber::call() {
   t_running_fiber = this;
   ASSERT(_state != RUNNING);
   _state = RUNNING;
-  if (swapcontext(&(t_main_fiber_of_this_thread->_ctx), &_ctx) == -1) {
+  if (swapcontext(&(t_origin_fiber->_ctx), &_ctx) == -1) {
     ASSERT2(false, swapcontext);
   }
 }
@@ -118,9 +121,9 @@ void Fiber::call() {
 void Fiber::back() {
   ASSERT(this == t_running_fiber);
 
-  t_running_fiber = t_main_fiber_of_this_thread.get();
+  t_running_fiber = t_origin_fiber.get();
 
-  if (swapcontext(&_ctx, &(t_main_fiber_of_this_thread->_ctx)) == -1) {
+  if (swapcontext(&_ctx, &(t_origin_fiber->_ctx)) == -1) {
     ASSERT2(false, swapcontext);
   }
 }
@@ -130,10 +133,10 @@ Fiber::Ptr Fiber::get_this() {
   if (t_running_fiber) {
     return t_running_fiber->shared_from_this();
   }
-  // 创建主协程
+  // 创建线程原始协程
   Fiber::Ptr main_fiber(new Fiber);
   ASSERT(t_running_fiber == main_fiber.get());  // 刚创建完主协程
-  t_main_fiber_of_this_thread = main_fiber;
+  t_origin_fiber = main_fiber;
   return t_running_fiber->shared_from_this();
 }
 

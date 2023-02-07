@@ -20,7 +20,7 @@ class Scheduler {
   using Ptr = std::shared_ptr<Scheduler>;
   using MutexType = Mutex;  // 方便更换
 
-  Scheduler(size_t threads = 1, bool use_caller = true, const std::string &name = "");
+  Scheduler(size_t threads = 1, bool use_main_thread = true, const std::string &name = "");
 
   virtual ~Scheduler();
 
@@ -28,9 +28,6 @@ class Scheduler {
 
   // 返回当前协程调度器
   static Scheduler *s_get_this();
-
-  // 返回当前调度器的调度协程
-  static Fiber *s_get_main_fiber();
 
   // 创建scheduler的线程
   void start();
@@ -116,10 +113,10 @@ class Scheduler {
   std::vector<Thread::Ptr> _threads;
   // 待执行的协程队列
   std::list<FiberAndThread::Ptr> _fiber_and_threads;
-  // use_caller为true时有效，调度协程
-  Fiber::Ptr _root_fiber;
   // 调度器名称
   std::string _name;
+  // 是否使用主线程来处理任务
+  bool _use_main_thread;
 
  protected:
   //
@@ -130,8 +127,6 @@ class Scheduler {
   std::atomic<size_t> _active_thread_count = {0};
   // 空闲线程数
   std::atomic<size_t> _idle_thread_count = {0};
-  // 主线程id (use_caller)
-  int _root_thread = -1;
   // 是否自动停止(暂时不知道是什么作用)
   bool _auto_stop = false;
   // 是否正在停止，默认为true

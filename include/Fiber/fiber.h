@@ -32,9 +32,9 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
    * @details 只创建，未执行
    * @param cb 协程入口函数
    * @param stack_size 栈大小
-   * @param run_in_scheduler 本协程是否参与调度器调度
+   * @param 是否为scheduler的root_fiber
    */
-  Fiber(std::function<void()> &&cb, size_t stack_size = 0, bool run_in_schduler = true);
+  Fiber(std::function<void()> &&cb, size_t stack_size = 0, bool root_fiber = false);
 
   ~Fiber();
 
@@ -80,7 +80,7 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
   void *_stack = nullptr;
   // 协程入口函数
   std::function<void()> _cb;
-  // 是否参与调度器调优
+  // 是否参与调度器调调度
   bool _run_in_scheduler;
 };
 }  // namespace fleet

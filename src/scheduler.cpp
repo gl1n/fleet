@@ -11,25 +11,13 @@
 namespace fleet {
 // 保存当前调度器
 static thread_local Scheduler *t_scheduler = nullptr;
-// use_caller时有用
-static thread_local Fiber *t_schedule_fiber;
 
-Scheduler::Scheduler(size_t threads, bool use_caller, const std::string &name) : _name(name) {
+Scheduler::Scheduler(size_t threads, bool use_main_thread, const std::string &name)
+    : _name(name), _use_main_thread(use_main_thread) {
   ASSERT(threads > 0);
-  if (use_caller) {
-    threads--;                        // 因为只需要创建thread - 1个线程
-    ASSERT(s_get_this() == nullptr);  // t_scheduler此时应为空
-
-    _root_fiber = std::make_shared<Fiber>([this]() { Scheduler::run(); });
-    fleet::Thread::s_set_name(_name);
-
-    t_schedule_fiber = _root_fiber.get();  // 主线程的调度线程
-    _root_thread = fleet::get_thread_id();
-    _thread_ids.push_back(_root_thread);
-  } else {
-    _root_thread = -1;
+  if (use_main_thread) {
+    threads--;  // 因为只需要创建thread - 1个线程
   }
-
   _thread_count = threads;
 }
 
@@ -42,8 +30,6 @@ Scheduler::~Scheduler() {
 
 Scheduler *Scheduler::s_get_this() { return t_scheduler; }
 
-Fiber *Scheduler::s_get_main_fiber() { return t_schedule_fiber; }
-
 void Scheduler::start() {
   MutexType::Lock lock(_mutex);
   if (!_stopping) {  // 未启动前应该是默认为true
@@ -51,6 +37,7 @@ void Scheduler::start() {
   }
   _stopping = false;  // 启动后为false，当调用stop()方法时又变为true
   ASSERT(_threads.empty());
+
   for (size_t i = 0; i < _thread_count; ++i) {
     auto th = std::make_shared<Thread>([this]() { Scheduler::run(); },
                                        _name + "_" + std::to_string(i));  // 设置线程名，好调试
@@ -61,8 +48,7 @@ void Scheduler::start() {
 
 void Scheduler::stop() {
   _auto_stop = true;
-  if (_root_fiber && _thread_count == 0 &&
-      (_root_fiber->get_state() == Fiber::TERMINATED || _root_fiber->get_state() == Fiber::INIT)) {
+  if (_thread_count == 0) {
     InfoL << this << " scheduler stopped";
     _stopping = true;
 
@@ -72,24 +58,15 @@ void Scheduler::stop() {
     }
   }
 
-  // use_caller
-  if (_root_thread != -1) {
-    ASSERT(s_get_this() == this);
-  } else {
-    ASSERT(s_get_this() != this);
-  }
   _stopping = true;
   for (size_t i = 0; i < _thread_count; i++) {
     notify();
   }
-  if (_root_fiber) {
-    notify();
-  }
 
-  if (_root_fiber) {
-    if (!stopping()) {
-      _root_fiber->call();  // 执行_root_fiber，也是执行run方法
-    }
+  if (!stopping()) {
+    fleet::Thread::s_set_name(_name);
+    _thread_ids.push_back(fleet::get_thread_id());
+    run();
   }
 
   std::vector<Thread::Ptr> thrs;
@@ -106,11 +83,10 @@ void Scheduler::stop() {
 
 void Scheduler::run() {
   DebugL << _name << " run";
-  t_scheduler = this;  // 每个线程都要记录调度器
-  if (fleet::get_thread_id() != _root_thread) {
-    // 不是主线程，该线程的主协程就是调度协程
-    t_schedule_fiber = Fiber::get_this().get();
-  }
+
+  t_scheduler = this;  // 记录
+
+  Fiber::get_this();  //
 
   Fiber::Ptr idle_fiber(new Fiber([this]() { idle(); }));
 
