@@ -40,9 +40,9 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
 
   void reuse(std::function<void()> &&cb);
 
-  void call();
+  void enter();
 
-  void back();
+  void yield();
 
   uint64_t get_id() const { return _id; }
 

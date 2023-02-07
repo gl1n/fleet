@@ -21,9 +21,9 @@ int main(int argc, char **argv) {
             DebugL << "fiber end";
           });
           InfoL << "main after fiber created";
-          fiber->call();
+          fiber->enter();
           InfoL << "main after swap_in";
-          fiber->call();
+          fiber->enter();
           InfoL << "main after end";
         },
         "");

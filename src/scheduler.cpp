@@ -131,7 +131,7 @@ void Scheduler::run() {
           --_active_thread_count;
           continue;
         } else {
-          ft->fiber->call();  // 开始执行
+          ft->fiber->enter();  // 开始执行
           // 执行结束
           --_active_thread_count;
 
@@ -144,7 +144,7 @@ void Scheduler::run() {
       } else if (ft->cb) {  // 是callback
         auto cb_fiber = std::make_shared<Fiber>(std::move(ft->cb));
 
-        cb_fiber->call();
+        cb_fiber->enter();
         --_active_thread_count;
 
         if (cb_fiber->get_state() == Fiber::READY) {
@@ -158,7 +158,7 @@ void Scheduler::run() {
         break;  // 整个run的while循环结束
       }
       ++_idle_thread_count;
-      idle_fiber->call();  // 执行idle协程
+      idle_fiber->enter();  // 执行idle协程
       --_idle_thread_count;
       if (idle_fiber->get_state() != Fiber::TERMINATED && idle_fiber->get_state() != Fiber::EXCEPT) {
         // idle_fiber->_state = Fiber::HOLD;

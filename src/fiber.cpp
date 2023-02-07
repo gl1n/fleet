@@ -109,7 +109,7 @@ void Fiber::reuse(std::function<void()> &&cb) {
   _state = INIT;
 }
 
-void Fiber::call() {
+void Fiber::enter() {
   t_running_fiber = this;
   ASSERT(_state != RUNNING);
   _state = RUNNING;
@@ -118,7 +118,7 @@ void Fiber::call() {
   }
 }
 
-void Fiber::back() {
+void Fiber::yield() {
   ASSERT(this == t_running_fiber);
 
   t_running_fiber = t_origin_fiber.get();
@@ -145,14 +145,14 @@ void Fiber::yield_to_hold() {
 
   ASSERT(cur->_state == RUNNING);
   cur->_state = HOLD;
-  cur->back();
+  cur->yield();
 }
 
 void Fiber::yield_to_ready() {
   Fiber::Ptr cur = get_this();
   ASSERT(cur->_state == RUNNING);
   cur->_state = READY;
-  cur->back();
+  cur->yield();
 }
 
 uint64_t Fiber::get_fiber_id() {
@@ -179,7 +179,7 @@ void Fiber::main_func() {
      ErrorL << "Fiber Exception: " << " fiber id = " << cur->get_id();
      ErrorL << backtrace_to_string();
    }*/
-  cur->back();
+  cur->yield();
 
   ASSERT2(false, "never reach");
 }
