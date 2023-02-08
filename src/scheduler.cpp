@@ -86,7 +86,7 @@ void Scheduler::run() {
 
   t_scheduler = this;  // 记录
 
-  Fiber::get_this();  //
+  Fiber::get_this();  // 创建线程原始协程
 
   Fiber::Ptr idle_fiber(new Fiber([this]() { idle(); }));
 
