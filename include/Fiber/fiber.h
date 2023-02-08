@@ -7,7 +7,11 @@
 #include <memory>
 
 namespace fleet {
+
+class Scheduler;
 class Fiber : public std::enable_shared_from_this<Fiber> {
+  friend Scheduler;  // 需要调用get_this()
+
  public:
   using Ptr = std::shared_ptr<Fiber>;
 
@@ -42,9 +46,6 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
   State get_state() const { return _state; }
 
  public:
-  // 返回当前所在的协程
-  static Fiber::Ptr get_this();
-
   static void yield_to_hold();
 
   static void yield_to_ready();
@@ -55,6 +56,10 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
  private:
   // 用于创建主协程
   Fiber();
+
+  // 返回当前所在的协程，必要时会创建线程原始协程
+  static Fiber::Ptr get_this();
+
   /**
    * 协程入口函数
    */
@@ -65,9 +70,9 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
 
  private:
   // 协程id
-  u_int64_t _id = 0;
+  uint64_t _id = 0;
   // 协程栈大小
-  u_int64_t _stack_size = 0;
+  uint64_t _stack_size = 0;
   // 协程状态
   State _state = READY;
   // 协程上下文
