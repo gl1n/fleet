@@ -118,7 +118,7 @@ void LogChannel::format(LogEvent::Ptr event, std::ostream &stream, bool if_color
     if (if_color) {                                                                     \
       stream << "\033[1;" << color[static_cast<unsigned long>(LogLevel::level)] << "m"; \
     }                                                                                   \
-    stream << std::setw(5) << #level;                                                   \
+    stream << std::setw(9) << #level;                                                   \
     if (if_color) {                                                                     \
       stream << "\033[0m";                                                              \
     }                                                                                   \
@@ -134,17 +134,18 @@ void LogChannel::format(LogEvent::Ptr event, std::ostream &stream, bool if_color
 #undef CASE
 
   // 文件信息
+  stream << std::setw(20);
   stream << event->_file;
-  stream << " ";
+  stream << std::setw(20);
   stream << event->_function;
-  stream << " ";
+  stream << std::setw(6);
   stream << event->_line;
-  stream << " ";
 
   // 线程号
+  stream << std::setw(5);
   stream << '<';
   stream << event->_thread_id;
-  stream << "> ";
+  stream << ">     ";
 
   // 日志内容
   if (if_color) {
