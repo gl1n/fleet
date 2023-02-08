@@ -14,7 +14,6 @@
 #include <utility>
 
 #include <Utils/list.h>
-#include <sys/types.h>
 #include "Thread/mutex.h"
 #include "Thread/thread.h"
 

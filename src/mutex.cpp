@@ -1,12 +1,11 @@
 #include <semaphore.h>
-#include <sys/types.h>
 #include <exception>
 #include <stdexcept>
 
 #include "Thread/mutex.h"
 
 namespace fleet {
-Semaphore::Semaphore(u_int32_t count) {
+Semaphore::Semaphore(uint32_t count) {
   if (sem_init(&_sem, 0, count)) {
     throw std::runtime_error("sem_init error");
   }

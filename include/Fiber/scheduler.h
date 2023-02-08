@@ -1,6 +1,5 @@
 #pragma once
 
-#include <sys/types.h>
 #include <atomic>
 #include <cstddef>
 #include <functional>
@@ -45,7 +44,7 @@ class Scheduler {
 
   // 一次性传入多个协程，可以保证协程的顺序，而且只用加一次锁
   template <class Iterator>
-  void schedule(Iterator begin, Iterator end, u_int64_t thread = -1) {
+  void schedule(Iterator begin, Iterator end, uint64_t thread = -1) {
     {
       MutexType::Lock lock(_mutex);
       auto iter = begin;
@@ -92,7 +91,7 @@ class Scheduler {
     std::function<void()> cb;
 
     // 线程id
-    u_int64_t thread;
+    uint64_t thread;
 
     FiberAndThread(const Fiber::Ptr &fb, int thr) : fiber(fb), thread(thr) {}
 

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <sys/types.h>
 #include <ucontext.h>
 #include <cstdint>
 #include <functional>

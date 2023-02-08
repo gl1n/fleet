@@ -2,7 +2,7 @@
 
 #include <pthread.h>
 #include <semaphore.h>
-#include <sys/types.h>
+#include <cstdint>
 
 #include "Utils/uncopyable.h"
 
@@ -16,7 +16,7 @@ class Semaphore : private Uncopyable {
    * @brief 构造函数
    * @param count 信号值的大小
    */
-  Semaphore(u_int32_t count = 0);
+  Semaphore(uint32_t count = 0);
 
   /**
    * @brief 析构函数
@@ -118,7 +118,7 @@ class SpinLock : private Uncopyable {
   void unlock() { pthread_spin_unlock(&_mutex); }
 
  private:
-  //系统提供的自旋锁
+  // 系统提供的自旋锁
   pthread_spinlock_t _mutex;
 };
 
