@@ -107,6 +107,7 @@ void Scheduler::run() {
         }
 
         ASSERT((*it)->fiber || (*it)->cb);  // fiber和cb至少得有一个
+
         if ((*it)->fiber && (*it)->fiber->get_state() == Fiber::RUNNING) {
           // 这里不太理解
           ++it;
@@ -160,9 +161,6 @@ void Scheduler::run() {
       ++_idle_thread_count;
       idle_fiber->enter();  // 执行idle协程
       --_idle_thread_count;
-      if (idle_fiber->get_state() != Fiber::TERMINATED && idle_fiber->get_state() != Fiber::EXCEPT) {
-        // idle_fiber->_state = Fiber::HOLD;
-      }
     }
   }
 }
