@@ -11,6 +11,7 @@
 #include <thread>
 
 #include <Utils/log.h>
+#include "Fiber/fiber.h"
 #include "Utils/utils.h"
 
 namespace fleet {
@@ -47,6 +48,7 @@ LogEvent::LogEvent(LogLevel level, const char *file, const char *function, int l
     : _level(level), _file(strrchr(file, '/') + 1), _function(function), _line(line) {
   gettimeofday(&_tv, nullptr);  // 获取时间，精确到毫秒
   _thread_id = get_thread_id();
+  _fiber_id = fleet::Fiber::get_fiber_id();
 }
 
 /*******************LogEventCapture*******************/
@@ -142,10 +144,15 @@ void LogChannel::format(LogEvent::Ptr event, std::ostream &stream, bool if_color
   stream << event->_line;
 
   // 线程号
-  stream << std::setw(5);
-  stream << '<';
+  stream << "     <";
+  stream << std::setw(2);
   stream << event->_thread_id;
-  stream << ">     ";
+  stream << ">";
+
+  // 协程号
+  stream << "  {";
+  stream << event->_fiber_id;
+  stream << "} \t";
 
   // 日志内容
   if (if_color) {

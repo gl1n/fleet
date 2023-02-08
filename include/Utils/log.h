@@ -14,6 +14,7 @@
 #include <utility>
 
 #include <Utils/list.h>
+#include <sys/types.h>
 #include "Thread/mutex.h"
 #include "Thread/thread.h"
 
@@ -73,6 +74,7 @@ class LogEvent : public std::ostringstream {
   int _line;
   struct timeval _tv;
   pid_t _thread_id;
+  uint64_t _fiber_id;
 };
 
 class LogEventCapture {
