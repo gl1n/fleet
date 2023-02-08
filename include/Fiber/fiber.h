@@ -12,18 +12,13 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
   using Ptr = std::shared_ptr<Fiber>;
 
   enum State {
-    // 初始状态
-    INIT,
-    // 暂停状态
-    HOLD,
-    // 就绪态
-    READY,
-    // 运行态
-    RUNNING,
-    // 结束态
-    TERMINATED,
-    // 异常状态
-    EXCEPT
+    INIT,     // 初始状态
+    HOLD,     // 暂停状态
+    READY,    // 就绪态，调度器应该自动重新将此协程放入任务队列
+    RUNNING,  // 运行态，表示正在执行的协程
+    /*下面两种状态都是协程被动结束(用户没有调用yield_to_hold或yield_to_ready)时产生*/
+    TERMINATED,  // 结束态
+    EXCEPT       // 异常状态
   };
 
  public:
@@ -41,8 +36,6 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
   void reuse(std::function<void()> &&cb);
 
   void enter();
-
-  void yield();
 
   uint64_t get_id() const { return _id; }
 
@@ -66,6 +59,9 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
    * 协程入口函数
    */
   static void main_func();
+
+  // 只能从内部调用
+  void yield();
 
  private:
   // 协程id
