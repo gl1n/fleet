@@ -16,11 +16,11 @@ int main(int argc, char **argv) {
     fleet::Fiber::yield_to_hold();
     DebugL << "fiber end";
   });
-  InfoL << "main after fiber created";
+  InfoL << "original thread after fiber created";
   fiber->enter();
-  InfoL << "main after swap_in";
+  InfoL << "original thread after fiber entered";
   fiber->enter();
-  InfoL << "main after end";
+  InfoL << "original after fiber ended";
 
   return 0;
 }
