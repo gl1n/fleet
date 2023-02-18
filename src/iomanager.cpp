@@ -1,7 +1,10 @@
+#include <asm-generic/errno-base.h>
 #include <error.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <cerrno>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <stdexcept>
@@ -213,6 +216,32 @@ void IOManager::notify() {
 }
 bool IOManager::stopping() { return _pending_event_count == 0 && Scheduler::stopping(); }
 
-void IOManager::idle() {}
+void IOManager::idle() {
+  DebugL << "idle";
+
+  constexpr uint64_t MAX_EVENTS = 256;
+
+  epoll_event events[MAX_EVENTS];
+
+  while (true) {
+    if (stopping()) {
+      DebugL << "name = " << get_name() << "idle stopping exit";
+      break;
+    }
+
+    // 阻塞在epoll_wait上，等待事件发生
+    constexpr uint64_t MAX_TIMEOUT = 5000;
+    int ret = epoll_wait(_epfd, events, MAX_EVENTS, MAX_TIMEOUT);
+    if (ret < 0) {
+      if (errno == EINTR) {
+        // 被中断，重新wait
+        continue;
+      }
+      ErrorL << "epoll_wait(" << _epfd << ") (ret = " << ret << ") (errno = " << errno
+             << ") (errstr:" << strerror(errno) << ")";
+      break;
+    }
+  }
+}
 
 }  // namespace fleet
