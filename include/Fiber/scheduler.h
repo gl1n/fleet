@@ -70,7 +70,7 @@ class Scheduler {
   virtual void idle();
 
   // 是否有空闲线程
-  bool hasIdleThreads() { return _idle_thread_count > 0; }
+  bool has_idle_threads() { return _idle_thread_count > 0; }
 
  private:
   template <class FiberOrCb>

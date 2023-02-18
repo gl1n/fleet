@@ -8,8 +8,10 @@
 namespace fleet {
 
 class Scheduler;
+class IOManager;
 class Fiber : public std::enable_shared_from_this<Fiber> {
   friend Scheduler;  // 需要调用get_this()
+  friend IOManager;
 
  public:
   using Ptr = std::shared_ptr<Fiber>;
