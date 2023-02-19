@@ -48,6 +48,7 @@ class IOManager : public Scheduler {
     FdContext::MutexType mutex;
   };
 
+ public:
   IOManager(size_t threads = 1, bool use_main_thread = true, const std::string &name = "");
 
   ~IOManager();
@@ -65,6 +66,8 @@ class IOManager : public Scheduler {
   bool cancel_event(int fd, Event event, bool trigger);
 
   bool cancel_all(int fd);
+
+  static IOManager *s_get_this();
 
  protected:
   // 唤醒idle

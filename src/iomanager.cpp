@@ -22,24 +22,30 @@ IOManager::IOManager(size_t threads, bool use_main_thread, const std::string &na
   _epfd = epoll_create(1000);
   ASSERT(_epfd > 0);
 
-  int rt = pipe(_notify_fds);
-  ASSERT(rt == 0);
+  int ret = pipe(_notify_fds);
+  ASSERT(ret == 0);
 
   epoll_event epev;
   epev.events = EPOLLIN | EPOLLET;  // 监听读事件，边缘触发
   epev.data.fd = _notify_fds[0];    // 让epoll监听管道的可读事件
 
   // 设置成非阻塞
-  rt = fcntl(_notify_fds[0], F_SETFL, O_NONBLOCK);
-  ASSERT(rt != -1);
+  ret = fcntl(_notify_fds[0], F_SETFL, O_NONBLOCK);
+  ASSERT(ret != -1);
 
   // 加入监听
-  rt = epoll_ctl(_epfd, EPOLL_CTL_ADD, _notify_fds[0], &epev);
-  ASSERT(rt == 0);
+  ret = epoll_ctl(_epfd, EPOLL_CTL_ADD, _notify_fds[0], &epev);
+  ASSERT(ret == 0);
 
   start();  // Scheduler继承来的方法，开辟线程池处理任务队列
 }
 
+IOManager::~IOManager() {
+  stop();
+  close(_epfd);
+  close(_notify_fds[0]);
+  close(_notify_fds[1]);
+}
 int IOManager::add_event(int fd, Event event, const std::function<void()> &cb) {
   // 判断是否fd有对应的FdContext
   _mutex.wrlock();
@@ -64,8 +70,8 @@ int IOManager::add_event(int fd, Event event, const std::function<void()> &cb) {
   epev.data.fd = fd;
   int rt = epoll_ctl(_epfd, op, fd, &epev);
   if (rt) {
-    ErrorL << "epoll_ctl(" << _epfd << ", " << op << ", " << fd << ", " << epev.events << "): " << rt << " (" << errno
-           << ") (" << strerror(errno) << ") fd_ctx->events=" << fd_ctx->events;
+    ErrorL << "epoll_ctl(" << _epfd << ", " << op << ", " << fd << ", " << static_cast<int>(epev.events) << "): " << rt
+           << " (" << errno << ") (" << strerror(errno) << ") fd_ctx->events=" << fd_ctx->events;
     return -1;
   }
 
@@ -112,8 +118,8 @@ bool IOManager::cancel_event(int fd, Event event, bool trigger) {
 
   int rt = epoll_ctl(_epfd, op, fd, &epev);
   if (rt) {
-    ErrorL << "epoll_ctl(" << _epfd << ", " << op << ", " << fd << ", " << epev.events << "): " << rt << " (" << errno
-           << ") (" << strerror(errno) << ") fd_ctx->events=" << fd_ctx->events;
+    ErrorL << "epoll_ctl(" << _epfd << ", " << op << ", " << fd << ", " << static_cast<int>(epev.events) << "): " << rt
+           << " (" << errno << ") (" << strerror(errno) << ") fd_ctx->events=" << fd_ctx->events;
     return false;
   }
 
@@ -159,8 +165,8 @@ bool IOManager::cancel_all(int fd) {
   epev.events = 0;
   int rt = epoll_ctl(_epfd, op, fd, &epev);
   if (rt) {
-    ErrorL << "epoll_ctl(" << _epfd << ", " << op << ", " << fd << ", " << epev.events << "): " << rt << " (" << errno
-           << ") (" << strerror(errno) << ") fd_ctx->events=" << fd_ctx->events;
+    ErrorL << "epoll_ctl(" << _epfd << ", " << op << ", " << fd << ", " << static_cast<int>(epev.events) << "): " << rt
+           << " (" << errno << ") (" << strerror(errno) << ") fd_ctx->events=" << fd_ctx->events;
     return false;
   }
 
@@ -181,6 +187,8 @@ bool IOManager::cancel_all(int fd) {
   ASSERT(fd_ctx->events == 0);
   return true;
 }
+IOManager *IOManager::s_get_this() { return dynamic_cast<IOManager *>(Scheduler::s_get_this()); }
+
 void IOManager::FdContext::trigger_event(Event event) {
   ASSERT(this->events & event);
   this->events = static_cast<Event>(events & ~event);
@@ -211,7 +219,7 @@ void IOManager::FdContext::reset_task(Task &task) {
 
 void IOManager::notify() {
   DebugL << "notify";
-  int rt = write(_notify_fds[0], "1", 1);
+  int rt = write(_notify_fds[1], "1", 1);
   ASSERT(rt == 1);
 }
 bool IOManager::stopping() { return _pending_event_count == 0 && Scheduler::stopping(); }
@@ -232,6 +240,7 @@ void IOManager::idle() {
     // 阻塞在epoll_wait上，等待事件发生
     constexpr uint64_t MAX_TIMEOUT = 5000;
     int ret = epoll_wait(_epfd, events, MAX_EVENTS, MAX_TIMEOUT);
+    // epoll_wait出错
     if (ret < 0) {
       if (errno == EINTR) {
         // 被中断，重新wait
@@ -240,6 +249,68 @@ void IOManager::idle() {
       ErrorL << "epoll_wait(" << _epfd << ") (ret = " << ret << ") (errno = " << errno
              << ") (errstr:" << strerror(errno) << ")";
       break;
+    }
+
+    // 遍历所有发生的事件
+    for (int i = 0; i < ret; i++) {
+      epoll_event &epev = events[i];
+      if (epev.data.fd == _notify_fds[0]) {
+        // 通知事件
+        static char dump[16];
+        int err = 0;
+        do {
+          if (read(_notify_fds[0], dump, sizeof(dump)) > 0) {
+            continue;
+          }
+          err = errno;
+        } while (err != EAGAIN);
+      } else {
+        auto fd_ctx = _fd_contexts[epev.data.fd];
+        FdContext::MutexType::Lock lock(fd_ctx->mutex);
+
+        // 出现错误要触发读写事件
+        if (epev.events & (EPOLLERR | EPOLLHUP)) {
+          epev.events |= (EPOLLIN | EPOLLOUT) & fd_ctx->events;  // 触发fd_ctx的读写事件（如果有的话）
+        }
+        // 将epev的events转成Event
+        int real_events = Event::NONE;
+        if (epev.events & EPOLLIN) {
+          real_events |= Event::READ;
+        }
+        if (epev.events & EPOLLOUT) {
+          real_events |= Event::WRITE;
+        }
+
+        if ((fd_ctx->events & real_events) == Event::NONE) {
+          // 关注的事件和发生的事件没有交集
+          continue;
+        }
+
+        // 删除已经发生，重新注册未发生的事件
+        int left_events = (fd_ctx->events & ~real_events);
+        int op = left_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+        epev.events = EPOLLET | left_events;
+
+        int ret2 = epoll_ctl(_epfd, op, epev.data.fd, &epev);
+        if (ret2) {
+          ErrorL << "epoll_ctl(" << _epfd << ", " << op << ", " << static_cast<int>(epev.data.fd) << ", "
+                 << static_cast<int>(epev.events) << "): " << ret2 << " (" << errno << ") (" << strerror(errno)
+                 << ") fd_ctx->events=" << fd_ctx->events;
+          continue;
+        }
+
+        if (real_events & Event::READ) {
+          fd_ctx->trigger_event(Event::READ);
+          --_pending_event_count;
+        }
+        if (real_events & Event::WRITE) {
+          fd_ctx->trigger_event(Event::WRITE);
+          --_pending_event_count;
+        }
+
+        // idle协程yield，让其他任务能够执行
+        Fiber::yield_to_hold();
+      }
     }
   }
 }
