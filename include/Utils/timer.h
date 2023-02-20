@@ -29,6 +29,7 @@ class Timer : public std::enable_shared_from_this<Timer> {
  private:
   Timer(uint64_t ms, std::function<void()> cb, bool repeat, TimerManager *manager);
 
+  // 创建用于比较的Timer
   Timer(uint64_t next);
 
  private:
@@ -39,7 +40,7 @@ class Timer : public std::enable_shared_from_this<Timer> {
  private:
   bool _repeat = false;
   // 执行周期
-  uint64_t _ms = 0;
+  uint64_t _period = 0;
   // 绝对执行时间
   uint64_t _next = 0;
   // 回调函数
@@ -66,7 +67,7 @@ class TimerManager {
   uint64_t get_next_timer();
 
   // 获取要执行的回调列表
-  void list_expired_cb(std::vector<std::function<void()>> &cbs);
+  std::vector<std::function<void()>> list_expired_cb();
 
   bool has_timer();
 
@@ -82,8 +83,5 @@ class TimerManager {
 
   // 当有Timer插到最前面时，置为true
   bool _tickled = false;
-
-  // 上次执行时间
-  uint64_t _previous_time = 0;
 };
 }  // namespace fleet

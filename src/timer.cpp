@@ -1,11 +1,14 @@
 #include "Utils/timer.h"
+#include <cstdint>
+#include <functional>
 #include <memory>
+#include <vector>
 #include "Utils/utils.h"
 
 namespace fleet {
 Timer::Timer(uint64_t ms, std::function<void()> cb, bool repeat, TimerManager *manager)
-    : _repeat(repeat), _ms(ms), _cb(cb), _manager(manager) {
-  _next = _ms + time_since_epoch_millisecs();
+    : _repeat(repeat), _period(ms), _cb(cb), _manager(manager) {
+  _next = _period + time_since_epoch_millisecs();
 }
 
 Timer::Timer(uint64_t next) : _next(next) {}
@@ -36,12 +39,12 @@ bool Timer::refresh() {
   }
   // 删掉后重新插入才能保证_timers有序
   _manager->_timers.erase(it);
-  _next = _ms + time_since_epoch_millisecs();
+  _next = _period + time_since_epoch_millisecs();
   _manager->_timers.insert(shared_from_this());
   return true;
 }
 
-TimerManager::TimerManager() { _previous_time = time_since_epoch_millisecs(); }
+TimerManager::TimerManager() {}
 
 TimerManager::~TimerManager() {}
 
@@ -70,4 +73,74 @@ void TimerManager::add_timer(Timer::Ptr timer, RWMutexType::WriteLock &lock) {
   }
 }
 
+Timer::Ptr TimerManager::add_condition_timer(uint64_t ms, std::function<void()> cb, std::weak_ptr<void()> weak_cond,
+                                             bool repeat) {
+  return add_timer(
+      ms,
+      [cb, weak_cond]() {
+        auto weak_ptr = weak_cond.lock();
+        if (weak_ptr) {
+          cb();
+        }
+      },
+      repeat);
+}
+
+uint64_t TimerManager::get_next_timer() {
+  RWMutexType::ReadLock lock(_mutex);
+  _tickled = false;
+  if (_timers.empty()) {
+    return UINT64_MAX;
+  }
+
+  const Timer::Ptr &next = *_timers.begin();
+  auto now_ms = time_since_epoch_millisecs();
+  if (now_ms >= next->_next) {
+    return 0;  // 有定时器到期了
+  } else {
+    return next->_next - now_ms;  // 返回最早的到期时间
+  }
+}
+
+std::vector<std::function<void()>> TimerManager::list_expired_cb() {
+  auto now_ms = time_since_epoch_millisecs();
+  RWMutexType::WriteLock lock(_mutex);
+  // 没有Timer
+  if (_timers.empty()) {
+    return {};
+  }
+  // 没有超时的
+  if ((*_timers.begin())->_next > now_ms) {
+    return {};
+  }
+
+  Timer::Ptr now_timer = std::make_shared<Timer>(now_ms);
+  // 获取指向第一个大于等于now_timer的迭代器
+  auto first_greater = _timers.lower_bound(now_timer);
+  // 获取指向第一个大于now_timer的迭代器
+  while (first_greater != _timers.end() && (*first_greater)->_next == now_ms) {
+    first_greater++;
+  }
+
+  std::vector<std::function<void()>> cbs;
+  for (auto it = _timers.begin(); it != first_greater;) {
+    auto timer = (*it);
+    // 将cb放入cbs
+    cbs.push_back(timer->_cb);
+    // 删除过期Timer
+    it = _timers.erase(it);  // 返回值是被删除的下一个
+    if ((*it)->_repeat) {
+      // 将更新后的Timer重新插入
+      timer->_next = now_ms + timer->_period;
+      _timers.insert(timer);
+    }
+  }
+
+  return cbs;
+}
+
+bool TimerManager::has_timer() {
+  RWMutexType::ReadLock lock(_mutex);
+  return !_timers.empty();
+}
 }  // namespace fleet
