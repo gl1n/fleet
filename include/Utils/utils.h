@@ -1,6 +1,7 @@
 #pragma once
 
 #include <error.h>
+#include <cstdint>
 #include <string>
 
 namespace fleet {
@@ -19,4 +20,6 @@ std::string get_thread_name();
  * @param skip 跳过栈顶skip个函数不打印
  */
 std::string backtrace_to_string(int size = 64, int skip = 2, const std::string &prefix = "");
+
+uint64_t time_since_epoch_millisecs();
 }  // namespace fleet

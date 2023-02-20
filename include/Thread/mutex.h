@@ -45,20 +45,48 @@ class ScopedLockImpl {
 template <class T>
 class ReadScopedLockImpl {
  public:
-  ReadScopedLockImpl(T &mutex) : _mutex(mutex) { _mutex.rdlock(); }
-  ~ReadScopedLockImpl() { _mutex.unlock(); }
+  ReadScopedLockImpl(T &mutex) : _mutex(mutex) {
+    _mutex.rdlock();
+    _released = false;
+  }
+
+  ~ReadScopedLockImpl() {
+    if (!_released) {
+      _mutex.unlock();
+    }
+  }
+
+  void unlock() {
+    _released = true;
+    _mutex.unlock();
+  }
 
  private:
+  bool _released;
   T &_mutex;
 };
 
 template <class T>
 class WriteScopedLockImpl {
  public:
-  WriteScopedLockImpl(T &mutex) : _mutex(mutex) { _mutex.wrlock(); }
-  ~WriteScopedLockImpl() { _mutex.unlock(); }
+  WriteScopedLockImpl(T &mutex) : _mutex(mutex) {
+    _mutex.wrlock();
+    _released = false;
+  }
+
+  ~WriteScopedLockImpl() {
+    if (!_released) {
+      _mutex.unlock();
+    }
+  }
+
+  void unlock() {
+    _released = true;
+    _mutex.unlock();
+  }
 
  private:
+  bool _released;
   T &_mutex;
 };
 

@@ -1,7 +1,9 @@
+#include <bits/chrono.h>
 #include <cxxabi.h>
 #include <execinfo.h>  //for backtrace/backtrace_symbols
 #include <pthread.h>
 #include <unistd.h>
+#include <chrono>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -48,5 +50,9 @@ std::string backtrace_to_string(int size, int skip, const std::string &prefix) {
     ss << prefix << item;
   }
   return ss.str();
+}
+uint64_t time_since_epoch_millisecs() {
+  return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
+      .count();
 }
 }  // namespace fleet
