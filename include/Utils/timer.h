@@ -24,10 +24,10 @@ class Timer : public std::enable_shared_from_this<Timer> {
 
   bool refresh();
 
-  bool reset(uint64_t ms, bool from_now);
+  bool reset(uint64_t period, bool from_now);
 
  private:
-  Timer(uint64_t ms, std::function<void()> cb, bool repeat, TimerManager *manager);
+  Timer(uint64_t period, std::function<void()> cb, bool repeat, TimerManager *manager);
 
   // 创建用于比较的Timer
   Timer(uint64_t next);
@@ -59,9 +59,9 @@ class TimerManager {
   // 可能要继承
   virtual ~TimerManager();
 
-  Timer::Ptr add_timer(uint64_t ms, std::function<void()> cb, bool repeat = false);
+  Timer::Ptr add_timer(uint64_t period, std::function<void()> cb, bool repeat = false);
 
-  Timer::Ptr add_condition_timer(uint64_t ms, std::function<void()> cb, std::weak_ptr<void()> weak_cond,
+  Timer::Ptr add_condition_timer(uint64_t period, std::function<void()> cb, std::weak_ptr<void()> weak_cond,
                                  bool repeat = false);
 
   uint64_t get_next_timer();

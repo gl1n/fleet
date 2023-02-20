@@ -6,8 +6,8 @@
 #include "Utils/utils.h"
 
 namespace fleet {
-Timer::Timer(uint64_t ms, std::function<void()> cb, bool repeat, TimerManager *manager)
-    : _repeat(repeat), _period(ms), _cb(cb), _manager(manager) {
+Timer::Timer(uint64_t period, std::function<void()> cb, bool repeat, TimerManager *manager)
+    : _repeat(repeat), _period(period), _cb(cb), _manager(manager) {
   _next = _period + time_since_epoch_millisecs();
 }
 
@@ -41,6 +41,39 @@ bool Timer::refresh() {
   _manager->_timers.erase(it);
   _next = _period + time_since_epoch_millisecs();
   _manager->_timers.insert(shared_from_this());
+  return true;
+}
+
+bool Timer::reset(uint64_t period, bool from_now) {
+  if (period == _period && !from_now) {
+    // 不需要处理
+    return true;
+  }
+
+  TimerManager::RWMutexType::WriteLock lock(_manager->_mutex);
+  if (!_cb) {
+    // 没有cb也不用处理
+    return false;
+  }
+  auto it = _manager->_timers.find(shared_from_this());
+  if (it == _manager->_timers.end()) {
+    // 找不到对应的Timer，直接return
+    return false;
+  }
+
+  _manager->_timers.erase(it);
+  // 修改周期
+  if (from_now) {
+    // from_now 会修改起始时间
+    _period = period;
+    _next = time_since_epoch_millisecs() + _period;
+  } else {
+    // !from_now则不会
+    _next += period - _period;
+    _period = period;
+  }
+  // 重新放回去
+  _manager->add_timer(shared_from_this(), lock);
   return true;
 }
 
