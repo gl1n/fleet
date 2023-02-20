@@ -3,11 +3,14 @@
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cerrno>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #include "Fiber/fiber.h"
 #include "Fiber/iomanager.h"
@@ -222,7 +225,15 @@ void IOManager::notify() {
   int rt = write(_notify_fds[1], "1", 1);
   ASSERT(rt == 1);
 }
-bool IOManager::stopping() { return _pending_event_count == 0 && Scheduler::stopping(); }
+bool IOManager::stopping() {
+  uint64_t timeout = 0;
+  return stopping();
+}
+
+bool IOManager::stopping(uint64_t &timeout) {
+  timeout = get_next_timer();
+  return timeout == UINT64_MAX && _pending_event_count == 0 && Scheduler::stopping();
+}
 
 void IOManager::idle() {
   DebugL << "idle";
@@ -232,23 +243,38 @@ void IOManager::idle() {
   epoll_event events[MAX_EVENTS];
 
   while (true) {
-    if (stopping()) {
+    // 获取下一个定时器的超时时间，顺便判断调度器是否停止
+    uint64_t next_timeout = 0;
+    if (UNLIKELY(stopping(next_timeout))) {
       DebugL << "name = " << get_name() << "idle stopping exit";
       break;
     }
 
     // 阻塞在epoll_wait上，等待事件发生
     constexpr uint64_t MAX_TIMEOUT = 5000;
-    int ret = epoll_wait(_epfd, events, MAX_EVENTS, MAX_TIMEOUT);
-    // epoll_wait出错
-    if (ret < 0) {
-      if (errno == EINTR) {
-        // 被中断，重新wait
-        continue;
+    int ret = 0;
+    while (true) {
+      if (next_timeout == UINT64_MAX) {
+        // 没有定时器了
+        next_timeout = MAX_TIMEOUT;
+      } else {
+        // 有定时器
+        next_timeout = std::min(next_timeout, MAX_TIMEOUT);
       }
-      ErrorL << "epoll_wait(" << _epfd << ") (ret = " << ret << ") (errno = " << errno
-             << ") (errstr:" << strerror(errno) << ")";
-      break;
+      ret = epoll_wait(_epfd, events, MAX_EVENTS, MAX_TIMEOUT);
+      if (ret < 0 && errno == EINTR) {
+        // 被中断
+        continue;
+      } else {
+        // 超时
+        break;
+      }
+    }
+
+    // 收集所有已超时的定时器，执行回调
+    auto cbs = list_expired_cb();
+    for (auto const &cb : cbs) {
+      schedule(cb);
     }
 
     // 遍历所有发生的事件

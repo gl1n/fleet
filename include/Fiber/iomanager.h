@@ -3,15 +3,17 @@
 #include <sys/epoll.h>
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <unordered_map>
 
 #include "Fiber/scheduler.h"
 #include "Thread/mutex.h"
+#include "Utils/timer.h"
 
 namespace fleet {
-class IOManager : public Scheduler {
+class IOManager : public Scheduler, public TimerManager {
  public:
   using Ptr = std::shared_ptr<IOManager>;
   using RWMutexType = RWMutex;
@@ -74,6 +76,8 @@ class IOManager : public Scheduler {
   void notify() override;
 
   bool stopping() override;
+
+  bool stopping(uint64_t &timeout);
 
   void idle() override;
 
