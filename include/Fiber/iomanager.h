@@ -81,6 +81,8 @@ class IOManager : public Scheduler, public TimerManager {
 
   void idle() override;
 
+  void on_timer_inserted_front() override;
+
  private:
   int _epfd = 0;
   int _notify_fds[2];  // 0是read end, 1是write end

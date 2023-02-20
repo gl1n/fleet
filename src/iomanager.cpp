@@ -227,7 +227,7 @@ void IOManager::notify() {
 }
 bool IOManager::stopping() {
   uint64_t timeout = 0;
-  return stopping();
+  return stopping(timeout);
 }
 
 bool IOManager::stopping(uint64_t &timeout) {
@@ -249,7 +249,6 @@ void IOManager::idle() {
       DebugL << "name = " << get_name() << "idle stopping exit";
       break;
     }
-
     // 阻塞在epoll_wait上，等待事件发生
     constexpr uint64_t MAX_TIMEOUT = 5000;
     int ret = 0;
@@ -261,7 +260,7 @@ void IOManager::idle() {
         // 有定时器
         next_timeout = std::min(next_timeout, MAX_TIMEOUT);
       }
-      ret = epoll_wait(_epfd, events, MAX_EVENTS, MAX_TIMEOUT);
+      ret = epoll_wait(_epfd, events, MAX_EVENTS, next_timeout);
       if (ret < 0 && errno == EINTR) {
         // 被中断
         continue;
@@ -333,12 +332,15 @@ void IOManager::idle() {
           fd_ctx->trigger_event(Event::WRITE);
           --_pending_event_count;
         }
-
-        // idle协程yield，让其他任务能够执行
-        Fiber::yield_to_hold();
       }
     }
+    // idle协程yield，让其他任务能够执行
+    Fiber::yield_to_hold();
   }
+}
+void IOManager::on_timer_inserted_front() {
+  // 有比之前更快的定时器出现，需要重新epoll_wait()
+  notify();
 }
 
 }  // namespace fleet

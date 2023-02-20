@@ -51,8 +51,10 @@ std::string backtrace_to_string(int size, int skip, const std::string &prefix) {
   }
   return ss.str();
 }
-uint64_t time_since_epoch_millisecs() {
-  return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
-      .count();
+uint64_t get_elapsed_ms() {
+  struct timespec ts;
+  // linux中CLOCK_MONOTONIC_RAW表示可以获取从开机以来的时间，不受NTP影响，不统计系统挂起的时间
+  clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+  return ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
 }
 }  // namespace fleet

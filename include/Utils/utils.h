@@ -21,5 +21,5 @@ std::string get_thread_name();
  */
 std::string backtrace_to_string(int size = 64, int skip = 2, const std::string &prefix = "");
 
-uint64_t time_since_epoch_millisecs();
+uint64_t get_elapsed_ms();
 }  // namespace fleet

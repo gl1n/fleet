@@ -49,7 +49,6 @@ void Scheduler::start() {
 void Scheduler::stop() {
   _auto_stop = true;
   if (_thread_count == 0) {
-    InfoL << this << " scheduler stopped";
     _stopping = true;
 
     // ?
@@ -78,6 +77,7 @@ void Scheduler::stop() {
   for (auto &t : thrs) {
     t->join();
   }
+  InfoL << this << " scheduler stopped";
   // 到这里线程资源就可以回收了，无需等到Scheduler对象被析构
 }
 

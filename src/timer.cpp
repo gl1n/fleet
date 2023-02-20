@@ -8,7 +8,7 @@
 namespace fleet {
 Timer::Timer(uint64_t period, std::function<void()> cb, bool repeat, TimerManager *manager)
     : _repeat(repeat), _period(period), _cb(cb), _manager(manager) {
-  _next = _period + time_since_epoch_millisecs();
+  _next = _period + get_elapsed_ms();
 }
 
 Timer::Timer(uint64_t next) : _next(next) {}
@@ -39,7 +39,7 @@ bool Timer::refresh() {
   }
   // 删掉后重新插入才能保证_timers有序
   _manager->_timers.erase(it);
-  _next = _period + time_since_epoch_millisecs();
+  _next = _period + get_elapsed_ms();
   _manager->_timers.insert(shared_from_this());
   return true;
 }
@@ -66,7 +66,7 @@ bool Timer::reset(uint64_t period, bool from_now) {
   if (from_now) {
     // from_now 会修改起始时间
     _period = period;
-    _next = time_since_epoch_millisecs() + _period;
+    _next = get_elapsed_ms() + _period;
   } else {
     // !from_now则不会
     _next += period - _period;
@@ -82,7 +82,7 @@ TimerManager::TimerManager() {}
 TimerManager::~TimerManager() {}
 
 Timer::Ptr TimerManager::add_timer(uint64_t ms, std::function<void()> cb, bool repeat) {
-  Timer::Ptr timer = std::make_shared<Timer>(ms, cb, repeat, this);
+  Timer::Ptr timer(new Timer(ms, cb, repeat, this));
 
   RWMutexType::WriteLock lock(_mutex);
   // 传lock进去是为了提前释放_mutex，减少加锁时间
@@ -127,7 +127,7 @@ uint64_t TimerManager::get_next_timer() {
   }
 
   const Timer::Ptr &next = *_timers.begin();
-  auto now_ms = time_since_epoch_millisecs();
+  auto now_ms = get_elapsed_ms();
   if (now_ms >= next->_next) {
     return 0;  // 有定时器到期了
   } else {
@@ -136,7 +136,7 @@ uint64_t TimerManager::get_next_timer() {
 }
 
 std::vector<std::function<void()>> TimerManager::list_expired_cb() {
-  auto now_ms = time_since_epoch_millisecs();
+  auto now_ms = get_elapsed_ms();
   RWMutexType::WriteLock lock(_mutex);
   // 没有Timer
   if (_timers.empty()) {
@@ -147,7 +147,7 @@ std::vector<std::function<void()>> TimerManager::list_expired_cb() {
     return {};
   }
 
-  Timer::Ptr now_timer = std::make_shared<Timer>(now_ms);
+  Timer::Ptr now_timer(new Timer(now_ms));
   // 获取指向第一个大于等于now_timer的迭代器
   auto first_greater = _timers.lower_bound(now_timer);
   // 获取指向第一个大于now_timer的迭代器
@@ -162,7 +162,7 @@ std::vector<std::function<void()>> TimerManager::list_expired_cb() {
     cbs.push_back(timer->_cb);
     // 删除过期Timer
     it = _timers.erase(it);  // 返回值是被删除的下一个
-    if ((*it)->_repeat) {
+    if (timer->_repeat) {
       // 将更新后的Timer重新插入
       timer->_next = now_ms + timer->_period;
       _timers.insert(timer);

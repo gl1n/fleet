@@ -34,7 +34,7 @@ class Timer : public std::enable_shared_from_this<Timer> {
 
  private:
   struct Comparator {
-    bool operator()(Timer::Ptr const &lhs, Timer::Ptr const &rhs);
+    bool operator()(Timer::Ptr const &lhs, Timer::Ptr const &rhs) { return lhs->_next < rhs->_next; }
   };
 
  private:
