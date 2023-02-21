@@ -32,11 +32,17 @@ class Logger {
  public:
   using Ptr = std::shared_ptr<Logger>;
 
+  /**********单例**********/
  public:
-  // 单例
   static Logger &Instance();
   Logger(const Logger &) = delete;             // 禁用复制构造函数
   Logger &operator=(const Logger &) = delete;  // 禁用赋值函数
+
+ private:
+  Logger() {}
+  /***********************/
+
+ public:
   // 析构函数
   ~Logger();
 
@@ -46,8 +52,6 @@ class Logger {
   void set_async();
 
  private:
-  // 单例
-  Logger() {}  // 默认同步
   // 写event
   void write_event(std::shared_ptr<LogEvent> event);
   // 写到_channels中
