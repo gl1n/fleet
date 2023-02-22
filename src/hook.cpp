@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <utility>
 
 #include "Fiber/fiber.h"
 #include "IO/fd_manager.h"
@@ -14,6 +15,8 @@
 #include "IO/timer.h"
 #include "Utils/log.h"
 #include "Utils/utils.h"
+
+static uint64_t s_connect_timeout = 5000;
 
 namespace fleet {
 static thread_local bool t_hook_enable = false;
@@ -48,6 +51,70 @@ bool is_hook_enable() { return t_hook_enable; }
 void set_hook_enable(bool flag) { t_hook_enable = flag; }
 
 }  // namespace fleet
+
+template <typename OriginFun, typename... Args>  // 可变模板参数
+static ssize_t do_io(int fd, OriginFun func, const char *hook_fun_name, fleet::IOManager::Event event, int timeout_so,
+                     Args &&...args) {  // 万能引用
+  if (!fleet::t_hook_enable) {
+    return func(fd, std::forward<Args>(args)...);  // 完美转发
+  }
+
+  auto ctx = fleet::FdManager::Instance().get(fd);
+
+  if (!ctx || ctx->is_close()) {
+    errno = EBADF;
+    return -1;
+  }
+
+  if (!ctx->is_socket() || ctx->get_user_nonblock()) {
+    return func(fd, std::forward<Args>(args)...);
+  }
+
+  uint64_t to = ctx->get_timeout(timeout_so);
+
+  bool retry;
+  do {
+    retry = false;
+
+    ssize_t n = func(fd, std::forward<Args>(args)...);
+    while (n == -1 && errno == EINTR) {
+      n = func(fd, std::forward<Args>(args)...);
+    }
+
+    if (n == -1 && errno == EAGAIN) {
+      auto iom = fleet::IOManager::s_get_this();
+      fleet::Timer::Ptr timer;
+
+      bool is_timeout = false;
+      if (to != UINT64_MAX) {
+        timer = iom->add_timer(to, [fd, &is_timeout, iom, event]() {
+          is_timeout = true;
+          iom->del_event(fd, event, true);
+        });
+      }
+      int ret = iom->add_event(fd, event);
+      if (ret == 0) {
+        fleet::Fiber::s_get_this()->yield_to_hold();
+        if (timer) {
+          timer->cancel();
+        }
+        if (is_timeout) {
+          errno = ETIMEDOUT;
+          return -1;
+        }
+        retry = true;
+      } else {
+        if (timer) {
+          timer->cancel();
+        }
+        ErrorL << hook_fun_name << "cannont addEvent(" << socket << ", " << event << ") error";
+        return -1;
+      }
+    }
+
+    return n;
+  } while (retry);
+}
 
 extern "C" {
 // 定义头文件中声明的函数指针
@@ -127,11 +194,7 @@ int connect_with_timeout(int socket, const struct sockaddr *address, socklen_t a
     return -1;
   }
 
-  if (!ctx->is_socket()) {
-    return connect_p(socket, address, address_len);
-  }
-
-  if (ctx->get_user_nonblock()) {
+  if (!ctx->is_socket() && ctx->get_user_nonblock()) {
     return connect_p(socket, address, address_len);
   }
 
@@ -178,6 +241,7 @@ int connect_with_timeout(int socket, const struct sockaddr *address, socklen_t a
       timer->cancel();
     }
     ErrorL << "cannont addEvent(" << socket << ", WRITE) error";
+    return -1;
   }
 
   int error = 0;
@@ -190,7 +254,73 @@ int connect_with_timeout(int socket, const struct sockaddr *address, socklen_t a
   }
   return 0;
 }
-int connect(int socket, const struct sockaddr *address, socklen_t address_len) {}
 
-int accept(int socket, struct sockaddr *address, socklen_t *address_len) {}
+int connect(int socket, const struct sockaddr *address, socklen_t address_len) {
+  return connect_with_timeout(socket, address, address_len, s_connect_timeout);
+}
+
+int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
+  // socket是服务端，fd是客户端
+  int fd = do_io(socket, accept_p, "accept", fleet::IOManager::READ, SO_RCVTIMEO, address, address_len);
+  if (fd >= 0) {
+    fleet::FdManager::Instance().get(fd, true);
+  }
+  return fd;
+}
+
+ssize_t read(int fd, void *buf, size_t count) {
+  return do_io(fd, read_p, "read", fleet::IOManager::READ, SO_RCVTIMEO, buf, count);
+}
+
+ssize_t readv(int fd, const struct iovec *iov, int iovcnt) {
+  return do_io(fd, readv_p, "readv", fleet::IOManager::READ, SO_RCVTIMEO, iov, iovcnt);
+}
+
+ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
+  return do_io(sockfd, recv_p, "recvv", fleet::IOManager::READ, SO_RCVTIMEO, buf, len, flags);
+}
+
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen) {
+  return do_io(sockfd, recvfrom_p, "recvfrom", fleet::IOManager::READ, SO_RCVTIMEO, buf, len, flags, src_addr, addrlen);
+}
+
+ssize_t recvmsg(int sockfd, struct msghdr *msg, int flags) {
+  return do_io(sockfd, recvmsg_p, "recvmsg", fleet::IOManager::READ, SO_RCVTIMEO, msg, flags);
+}
+
+ssize_t write(int fd, const void *buf, size_t count) {
+  return do_io(fd, write_p, "write", fleet::IOManager::WRITE, SO_SNDTIMEO, buf, count);
+}
+
+ssize_t writev(int fd, const struct iovec *iov, int iovcnt) {
+  return do_io(fd, writev_p, "writev", fleet::IOManager::WRITE, SO_SNDTIMEO, iov, iovcnt);
+}
+
+ssize_t send(int socket, const void *msg, size_t len, int flags) {
+  return do_io(socket, send_p, "send", fleet::IOManager::WRITE, SO_SNDTIMEO, msg, len, flags);
+}
+
+ssize_t sendto(int socket, const void *msg, size_t len, int flags, const struct sockaddr *to, socklen_t tolen) {
+  return do_io(socket, sendto_p, "sendto", fleet::IOManager::WRITE, SO_SNDTIMEO, msg, len, flags, to, tolen);
+}
+
+ssize_t sendmsg(int socket, const struct msghdr *msg, int flags) {
+  return do_io(socket, sendmsg_p, "sendmsg", fleet::IOManager::WRITE, SO_SNDTIMEO, msg, flags);
+}
+
+int close(int fd) {
+  if (!fleet::t_hook_enable) {
+    return close_p(fd);
+  }
+
+  auto ctx = fleet::FdManager::Instance().get(fd);
+  if (ctx) {
+    auto iom = fleet::IOManager::s_get_this();
+    if (iom) {
+      iom->del_and_trigger_all(fd);
+    }
+    fleet::FdManager::Instance().del(fd);
+  }
+  return close_p(fd);
+}
 }

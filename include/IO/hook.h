@@ -14,10 +14,10 @@ void set_hook_enable(bool flag);
 // extern "C" 的作用是让函数以C的方式编译，防止函数名被mangle
 extern "C" {
 
-/****sleep ****/
+/****sleep****/
 // 定义函数签名为unsigned int(unsignned int seconds)的函数指针类型
-// extern的作用是声明一个类型为sleep_fun的变量但不对其定义。
-// sleep_f是个指针sleep_fun，未定义(在对应的cpp文件中定义，因为头文件中不能进行定义，除非是类内的成员)，
+// extern的作用是声明一个类型为sleep_type的变量但不对其定义。
+// sleep_p是个指针sleep_type，未定义(在对应的cpp文件中定义，因为头文件中不能进行定义，除非是类内的成员)，
 typedef unsigned int (*sleep_type)(unsigned int seconds);
 extern sleep_type sleep_p;
 
@@ -27,6 +27,7 @@ extern usleep_type usleep_p;
 typedef int (*nanosleep_type)(const struct timespec *req, struct timespec *rem);
 extern nanosleep_type nanosleep_p;
 
+/****socket****/
 typedef int (*socket_type)(int domain, int type, int protocol);
 extern socket_type socket_p;
 
@@ -35,4 +36,41 @@ extern connect_type connect_p;
 
 typedef int (*accept_type)(int socket, struct sockaddr *address, socklen_t *address_len);
 extern accept_type accept_p;
+
+/****read****/
+typedef ssize_t (*read_type)(int fd, void *buf, size_t count);
+extern read_type read_p;
+
+typedef ssize_t (*readv_type)(int fd, const struct iovec *iov, int iovcnt);
+extern readv_type readv_p;
+
+typedef ssize_t (*recv_type)(int sockfd, void *buf, size_t len, int flags);
+extern recv_type recv_p;
+
+typedef ssize_t (*recvfrom_type)(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr,
+                                 socklen_t *addrlen);
+extern recvfrom_type recvfrom_p;
+
+typedef ssize_t (*recvmsg_type)(int sockfd, struct msghdr *msg, int flags);
+extern recvmsg_type recvmsg_p;
+
+/****write****/
+typedef ssize_t (*write_type)(int fd, const void *buffer, size_t count);
+extern write_type write_p;
+
+typedef ssize_t (*writev_type)(int fd, const struct iovec *iov, int iovcnt);
+extern writev_type writev_p;
+
+typedef ssize_t (*send_type)(int socket, const void *msg, size_t len, int flags);
+extern send_type send_p;
+
+typedef ssize_t (*sendto_type)(int socket, const void *msg, size_t len, int flags, const struct sockaddr *to,
+                               socklen_t tolen);
+extern sendto_type sendto_p;
+
+typedef ssize_t (*sendmsg_type)(int socket, const struct msghdr *msg, int flags);
+extern sendmsg_type sendmsg_p;
+
+typedef int (*close_type)(int fd);
+extern close_type close_p;
 }
