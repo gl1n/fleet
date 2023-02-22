@@ -89,13 +89,13 @@ int IOManager::add_event(int fd, Event event, const std::function<void()> &cb) {
     task.cb = cb;
   } else {
     // 没有cb则回调是此协程(yield_to_hold之后等待IO事件重新执行？)
-    task.fiber = Fiber::get_this();
+    task.fiber = Fiber::s_get_this();
     ASSERT(task.fiber->get_state() == Fiber::RUNNING);  // 当前的状态应该是RUNNING
   }
   return 0;
 }
 
-bool IOManager::cancel_event(int fd, Event event, bool trigger) {
+bool IOManager::del_event(int fd, Event event, bool trigger_task) {
   {
     RWMutexType::ReadLock lock(_mutex);
     auto it = _fd_contexts.find(fd);
@@ -126,7 +126,7 @@ bool IOManager::cancel_event(int fd, Event event, bool trigger) {
     return false;
   }
 
-  if (!trigger) {
+  if (!trigger_task) {
     // 更新
     fd_ctx->events = new_events;
     auto &task = fd_ctx->get_task(event);
@@ -144,7 +144,7 @@ bool IOManager::cancel_event(int fd, Event event, bool trigger) {
 
   return true;
 }
-bool IOManager::cancel_all(int fd) {
+bool IOManager::del_and_trigger_all(int fd) {
   {
     RWMutexType::ReadLock lock(_mutex);
     auto it = _fd_contexts.find(fd);

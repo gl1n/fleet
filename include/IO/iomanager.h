@@ -65,9 +65,9 @@ class IOManager : public Scheduler, public TimerManager {
    * @brief 删除事件
    * @param trigger 是否执行回调
    */
-  bool cancel_event(int fd, Event event, bool trigger);
+  bool del_event(int fd, Event event, bool trigger_task);
 
-  bool cancel_all(int fd);
+  bool del_and_trigger_all(int fd);
 
   static IOManager *s_get_this();
 
