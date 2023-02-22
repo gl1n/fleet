@@ -53,7 +53,7 @@ Fiber::Fiber() {
 // 这里cb只能传右值，不能传左值
 Fiber::Fiber(std::function<void()> &&cb, size_t stack_size, bool run_in_schduler)
     : _cb(std::move(cb)), _run_in_scheduler(run_in_schduler) {
-  get_this();          // 如果没有主协程，创建之
+  s_get_this();        // 如果没有主协程，创建之
   _id = ++s_fiber_id;  // 要在主协程创建之后取id
   s_fiber_count++;
   _stack_size = _stack_size ? _stack_size : FIBER_STACK_SIZE;
@@ -129,7 +129,7 @@ void Fiber::yield() {
 }
 /************************静态方法**********************/
 
-Fiber::Ptr Fiber::get_this() {
+Fiber::Ptr Fiber::s_get_this() {
   if (t_running_fiber) {
     return t_running_fiber->shared_from_this();
   }
@@ -141,7 +141,7 @@ Fiber::Ptr Fiber::get_this() {
 }
 
 void Fiber::yield_to_hold() {
-  Fiber::Ptr cur = get_this();
+  Fiber::Ptr cur = s_get_this();
 
   ASSERT(cur->_state == RUNNING);
   cur->_state = HOLD;
@@ -149,7 +149,7 @@ void Fiber::yield_to_hold() {
 }
 
 void Fiber::yield_to_ready() {
-  Fiber::Ptr cur = get_this();
+  Fiber::Ptr cur = s_get_this();
   ASSERT(cur->_state == RUNNING);
   cur->_state = READY;
   cur->yield();
@@ -164,7 +164,7 @@ uint64_t Fiber::get_fiber_id() {
 
 void Fiber::main_func() {
   // 调用swap_in才会执行此函数，所以running_fiber一定不为空
-  auto cur = get_this().get();
+  auto cur = s_get_this().get();
   ASSERT(cur);
   try {
     cur->_cb();

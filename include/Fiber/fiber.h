@@ -10,7 +10,6 @@ namespace fleet {
 class Scheduler;
 class IOManager;
 class Fiber : public std::enable_shared_from_this<Fiber> {
-  friend Scheduler;  // 需要调用get_this()
   friend IOManager;
 
  public:
@@ -54,12 +53,12 @@ class Fiber : public std::enable_shared_from_this<Fiber> {
   // 将get_id()封装成静态方法
   static uint64_t get_fiber_id();
 
+  // 返回当前所在的协程，必要时会创建线程原始协程
+  static Fiber::Ptr s_get_this();
+
  private:
   // 用于创建主协程
   Fiber();
-
-  // 返回当前所在的协程，必要时会创建线程原始协程
-  static Fiber::Ptr get_this();
 
   /**
    * 协程入口函数
