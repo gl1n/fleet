@@ -106,7 +106,7 @@ void TimerManager::add_timer(Timer::Ptr timer, RWMutexType::WriteLock &lock) {
   }
 }
 
-Timer::Ptr TimerManager::add_condition_timer(uint64_t ms, std::function<void()> cb, std::weak_ptr<void()> weak_cond,
+Timer::Ptr TimerManager::add_condition_timer(uint64_t ms, std::function<void()> cb, std::weak_ptr<void> weak_cond,
                                              bool repeat) {
   return add_timer(
       ms,

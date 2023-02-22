@@ -61,7 +61,7 @@ class TimerManager {
 
   Timer::Ptr add_timer(uint64_t period, std::function<void()> cb, bool repeat = false);
 
-  Timer::Ptr add_condition_timer(uint64_t period, std::function<void()> cb, std::weak_ptr<void()> weak_cond,
+  Timer::Ptr add_condition_timer(uint64_t period, std::function<void()> cb, std::weak_ptr<void> weak_cond,
                                  bool repeat = false);
 
   uint64_t get_next_timer();
