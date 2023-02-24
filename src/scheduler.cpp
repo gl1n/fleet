@@ -1,8 +1,10 @@
-#include "Fiber/scheduler.h"
 #include <cstddef>
 #include <memory>
 #include <string>
+
 #include "Fiber/fiber.h"
+#include "Fiber/scheduler.h"
+#include "IO/hook.h"
 #include "Thread/thread.h"
 #include "Utils/log.h"
 #include "Utils/macro.h"
@@ -84,6 +86,7 @@ void Scheduler::stop() {
 void Scheduler::run() {
   DebugL << _name << " run";
 
+  set_hook_enable(true);
   t_scheduler = this;  // 记录
 
   Fiber::s_get_this();  // 创建线程原始协程

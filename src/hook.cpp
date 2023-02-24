@@ -1,8 +1,9 @@
-#include <asm-generic/errno-base.h>
-#include <asm-generic/errno.h>
+#include <asm-generic/socket.h>
 #include <dlfcn.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <cstdarg>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -14,6 +15,7 @@
 #include "IO/iomanager.h"
 #include "IO/timer.h"
 #include "Utils/log.h"
+#include "Utils/macro.h"
 #include "Utils/utils.h"
 
 static uint64_t s_connect_timeout = 5000;
@@ -28,7 +30,22 @@ static thread_local bool t_hook_enable = false;
   XX(nanosleep)      \
   XX(socket)         \
   XX(connect)        \
-  XX(accept)
+  XX(accept)         \
+  XX(read)           \
+  XX(readv)          \
+  XX(recv)           \
+  XX(recvfrom)       \
+  XX(recvmsg)        \
+  XX(write)          \
+  XX(writev)         \
+  XX(send)           \
+  XX(sendto)         \
+  XX(sendmsg)        \
+  XX(close)          \
+  XX(fcntl)          \
+  XX(ioctl)          \
+  XX(getsockopt)     \
+  XX(setsockopt)
 
 void hook_init() {
   static bool is_init = false;
@@ -322,5 +339,110 @@ int close(int fd) {
     fleet::FdManager::Instance().del(fd);
   }
   return close_p(fd);
+}
+
+int fcntl(int fd, int cmd, ...) {
+  va_list va;
+  // va_start的第二个参数应该传入...之前的那个参数
+  va_start(va, cmd);
+  switch (cmd) {
+    case F_SETFL: {
+      int arg = va_arg(va, int);
+      va_end(va);
+      fleet::FdCtx::Ptr ctx = fleet::FdManager::Instance().get(fd);
+      if (!ctx || ctx->is_close() || !ctx->is_socket()) {
+        return fcntl_p(fd, cmd, arg);
+      }
+      // 用户是否设置了NONBLOCK
+      ctx->set_user_nonblock(arg & O_NONBLOCK);
+      // 但是否真的要设置NONBLOCK还得看sys_nonblock
+      if (ctx->get_sys_nonblock()) {
+        arg |= O_NONBLOCK;
+      } else {
+        arg &= ~O_NONBLOCK;
+      }
+      return fcntl_p(fd, cmd, arg);
+    } break;
+    case F_GETFL: {
+      va_end(va);
+      // 直接执行用户的命令
+      int arg = fcntl_p(fd, cmd);
+      fleet::FdCtx::Ptr ctx = fleet::FdManager::Instance().get(fd);
+      if (!ctx || ctx->is_close() || !ctx->is_socket()) {
+        return arg;
+      }
+      // 但得根据用户之前的设置返回结果
+      if (ctx->get_user_nonblock()) {
+        return arg | O_NONBLOCK;
+      } else {
+        return arg & ~O_NONBLOCK;
+      }
+    } break;
+    case F_DUPFD:
+    case F_DUPFD_CLOEXEC:
+    case F_SETFD:
+    case F_SETOWN:
+    case F_SETSIG:
+    case F_SETLEASE:
+    case F_NOTIFY:
+#ifdef F_SETPIPE_SZ
+    case F_SETPIPE_SZ:
+#endif
+    {
+      int arg = va_arg(va, int);
+      va_end(va);
+      return fcntl_p(fd, cmd, arg);
+    } break;
+    case F_GETFD:
+    case F_GETOWN:
+    case F_GETSIG:
+    case F_GETLEASE:
+#ifdef F_GETPIPE_SZ
+    case F_GETPIPE_SZ:
+#endif
+    {
+      va_end(va);
+      return fcntl_p(fd, cmd);
+    } break;
+    case F_SETLK:
+    case F_SETLKW:
+    case F_GETLK: {
+      struct flock *arg = va_arg(va, struct flock *);
+      va_end(va);
+      return fcntl_p(fd, cmd, arg);
+    } break;
+    case F_GETOWN_EX:
+    case F_SETOWN_EX: {
+      struct f_owner_exlock *arg = va_arg(va, struct f_owner_exlock *);
+      va_end(va);
+      return fcntl_p(fd, cmd, arg);
+    } break;
+    default:
+      va_end(va);
+      return fcntl_p(fd, cmd);
+  }
+}
+
+int ioctl(int fd, int request, ... /* arg */) { ASSERT2(false, "ioctl is not support"); }
+
+int getsockopt(int socket, int level, int option_name, void *option_value, socklen_t *option_len) {
+  return getsockopt_p(socket, level, option_name, option_value, option_len);
+}
+
+int setsockopt(int socket, int level, int option_name, const void *option_value, socklen_t option_len) {
+  if (!fleet::t_hook_enable) {
+    return setsockopt_p(socket, level, option_name, option_value, option_len);
+  }
+  if (level == SOL_SOCKET) {
+    // 设置超时
+    if (option_name == SO_RCVTIMEO || option_name == SO_SNDTIMEO) {
+      fleet::FdCtx::Ptr ctx = fleet::FdManager::Instance().get(socket);
+      if (ctx) {
+        const timeval *v = static_cast<const timeval *>(option_value);
+        ctx->set_timeout(option_name, v->tv_sec * 1000 + v->tv_usec / 1000);
+      }
+    }
+  }
+  return setsockopt_p(socket, level, option_name, option_value, option_len);
 }
 }

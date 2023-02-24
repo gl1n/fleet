@@ -1,4 +1,3 @@
-#include <asm-generic/errno-base.h>
 #include <error.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
@@ -14,6 +13,7 @@
 
 #include "Fiber/fiber.h"
 #include "Fiber/scheduler.h"
+#include "IO/fd_manager.h"
 #include "IO/iomanager.h"
 #include "Utils/log.h"
 #include "Utils/macro.h"
@@ -27,6 +27,8 @@ IOManager::IOManager(size_t threads, bool use_main_thread, const std::string &na
 
   int ret = pipe(_notify_fds);
   ASSERT(ret == 0);
+  FdManager::Instance().get(_notify_fds[0], true);
+  FdManager::Instance().get(_notify_fds[1], true);  // 这里不设置的话会导致write/read直接返回-1
 
   epoll_event epev;
   epev.events = EPOLLIN | EPOLLET;  // 监听读事件，边缘触发
@@ -222,7 +224,7 @@ void IOManager::FdContext::reset_task(Task &task) {
 
 void IOManager::notify() {
   DebugL << "notify";
-  int rt = write(_notify_fds[1], "1", 1);
+  int rt = ::write(_notify_fds[1], "1", 1);
   ASSERT(rt == 1);
 }
 bool IOManager::stopping() {

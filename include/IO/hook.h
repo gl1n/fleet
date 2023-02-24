@@ -73,4 +73,18 @@ extern sendmsg_type sendmsg_p;
 
 typedef int (*close_type)(int fd);
 extern close_type close_p;
+
+//
+typedef int (*fcntl_type)(int fd, int cmd, ...);
+extern fcntl_type fcntl_p;
+
+// 不用这个了
+typedef int (*ioctl_type)(int fd, int request, ... /* arg */);
+extern ioctl_type ioctl_p;
+
+typedef int (*getsockopt_type)(int socket, int level, int option_name, void *option_value, socklen_t *option_len);
+extern getsockopt_type getsockopt_p;
+
+typedef int (*setsockopt_type)(int socket, int level, int option_name, const void *option_value, socklen_t option_len);
+extern setsockopt_type setsockopt_p;
 }

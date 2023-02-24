@@ -7,6 +7,12 @@
 #include "IO/fd_manager.h"
 
 namespace fleet {
+
+FdManager &FdManager::Instance() {
+  static FdManager instance;
+  return instance;
+}
+
 FdCtx::FdCtx(int fd) { init(); }
 
 // 如果_fd是socket，设置成非阻塞
