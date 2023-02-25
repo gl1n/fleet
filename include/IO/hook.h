@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -87,4 +88,8 @@ extern getsockopt_type getsockopt_p;
 
 typedef int (*setsockopt_type)(int socket, int level, int option_name, const void *option_value, socklen_t option_len);
 extern setsockopt_type setsockopt_p;
+
+// 编译期（链接前）需要知道此connnect_with_timeout的声明
+// 而其他函数如write、read的声明在各自原头文件中，只要include未hook前的头文件即可，故本文件无需再对write、read做声明
+int connect_with_timeout(int socket, const struct sockaddr *address, socklen_t address_len, uint64_t timeout_ms);
 }
