@@ -26,6 +26,9 @@ Logger::~Logger() { InfoL << "Program ends."; }
 
 // 写到_channels中
 void Logger::write_event(LogEvent::Ptr event) {
+  if (event->_level < _level) {
+    return;
+  }
   if (_writer) {  // 异步
     _writer->push_event(event, this);
   } else {  // 同步
@@ -42,6 +45,8 @@ void Logger::write_to_channels(LogEvent::Ptr event) {
 }
 
 void Logger::set_async() { _writer = std::make_shared<AsyncWriter>(); }
+
+void Logger::set_level(LogLevel level) { _level = level; }
 
 /*******************LogEvent*******************/
 LogEvent::LogEvent(LogLevel level, const char *file, const char *function, int line)

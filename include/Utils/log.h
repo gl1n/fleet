@@ -50,6 +50,8 @@ class Logger {
   void add_channel(std::shared_ptr<LogChannel> ch);
   // 设置为异步
   void set_async();
+  // 设置最低日志级别
+  void set_level(LogLevel level);
 
  private:
   // 写event
@@ -58,6 +60,7 @@ class Logger {
   void write_to_channels(std::shared_ptr<LogEvent> event);
 
  private:
+  LogLevel _level = LogLevel::Debug;
   std::list<std::shared_ptr<LogChannel>> _channels;  // 输出目的地
   std::shared_ptr<AsyncWriter> _writer;
   // 注意：_writer必须在_channels析构之前析构。
