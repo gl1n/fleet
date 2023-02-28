@@ -5,6 +5,7 @@
 #include <memory>
 
 #include "IO/fd_manager.h"
+#include "Thread/mutex.h"
 
 namespace fleet {
 
@@ -13,15 +14,10 @@ FdManager &FdManager::Instance() {
   return instance;
 }
 
-FdCtx::FdCtx(int fd) { init(); }
-
-// 如果_fd是socket，设置成非阻塞
-void FdCtx::init() {
+FdCtx::FdCtx(int fd) : _fd(fd) {
   if (_is_init) {
     return;
   }
-  _recv_timeout = -1;
-  _send_timeout = -1;
 
   struct stat fd_stat;
   // 如果获取_fd状态时出错，则将this设置成未初始化
@@ -65,29 +61,40 @@ uint64_t FdCtx::get_timeout(int type) {
   }
 }
 
-FdCtx::Ptr FdManager::get(int fd, bool auto_create) {
+FdCtx::Ptr FdManager::get_FdCtx(int fd) {
   if (fd == -1) {
     return nullptr;
   }
-  {
-    RWMutexType::ReadLock lock(_mutex);
-    auto it = _fdctxs.find(fd);
-    // 存在fd
-    if (it != _fdctxs.end()) {
-      return _fdctxs[fd];
-    }
+
+  RWMutexType::ReadLock lock(_fdctxs_mutex);
+  auto it = _fdctxs.find(fd);
+  // 存在fd
+  if (it != _fdctxs.end()) {
+    return _fdctxs[fd];
   }
-  // 不存在fd, 且不让自动创建
-  if (!auto_create) {
+  // 不存在
+  return nullptr;
+}
+
+FdCtx::Ptr FdManager::create_FdCtx(int fd) {
+  if (fd == -1) {
     return nullptr;
   }
-  // 不存在fd但可以自动创建
-  RWMutexType::WriteLock lock(_mutex);
-  _fdctxs[fd] = std::make_shared<FdCtx>(fd);
+  auto ctx = get_FdCtx(fd);
+  // 存在
+  if (ctx) {
+    return ctx;
+  }
+  // 不存在fd，创建一个
+  auto new_ctx =
+      std::shared_ptr<FdCtx>(new FdCtx(fd));  // 必须先创建再加锁。因为FdCtx构造函数调用了fcntl，fcntl又调用了get_FdCtx
+  RWMutexType::WriteLock lock(_fdctxs_mutex);
+  _fdctxs[fd] = new_ctx;
   return _fdctxs[fd];
 }
-void FdManager::del(int fd) {
-  RWMutexType::WriteLock lock(_mutex);
+
+void FdManager::del_FdCtx(int fd) {
+  RWMutexType::WriteLock lock(_fdctxs_mutex);
   _fdctxs.erase(fd);  // erase方法可以传入不存在的key
 }
 

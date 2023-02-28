@@ -32,9 +32,6 @@ class FdCtx : public std::enable_shared_from_this<FdCtx> {
   void set_timeout(int type, uint64_t v);
 
  private:
-  void init();
-
- private:
   bool _is_init = false;
   bool _is_socket = false;
   bool _is_close = false;
@@ -42,8 +39,8 @@ class FdCtx : public std::enable_shared_from_this<FdCtx> {
   bool _user_nonblock = false;
   bool _sys_nonblock = false;
 
-  uint64_t _recv_timeout = -1;
-  uint64_t _send_timeout = -1;
+  uint64_t _recv_timeout = UINT64_MAX;  // 默认的timeout是无穷
+  uint64_t _send_timeout = UINT64_MAX;  // 默认的timeout是无穷
 
   int _fd;
 };
@@ -62,15 +59,14 @@ class FdManager {
   /***********************/
 
  public:
-  /**
-   * @return auto_create 是否自动创建
-   */
-  FdCtx::Ptr get(int fd, bool auto_create = false);
+  FdCtx::Ptr get_FdCtx(int fd);
+  FdCtx::Ptr create_FdCtx(int fd);
 
-  void del(int fd);
+  void del_FdCtx(int fd);
 
  private:
-  RWMutexType _mutex;
+  RWMutexType _fdctxs_mutex;
+  // Mutex _fdctxs_mutex;
   std::unordered_map<int, FdCtx::Ptr> _fdctxs;
 };
 }  // namespace fleet
