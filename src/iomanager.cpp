@@ -14,6 +14,7 @@
 #include "Fiber/fiber.h"
 #include "Fiber/scheduler.h"
 #include "IO/fd_manager.h"
+#include "IO/hook.h"
 #include "IO/iomanager.h"
 #include "Utils/log.h"
 #include "Utils/macro.h"
@@ -25,10 +26,10 @@ IOManager::IOManager(size_t threads, bool use_main_thread, const std::string &na
   _epfd = epoll_create(1000);
   ASSERT(_epfd > 0);
 
+  set_hook_enable(true);  // 主线程要早点开，让后面的pipe hook
+
   int ret = pipe(_notify_fds);
   ASSERT(ret == 0);
-  FdManager::Instance().get(_notify_fds[0], true);
-  FdManager::Instance().get(_notify_fds[1], true);  // 这里不设置的话会导致write/read直接返回-1
 
   epoll_event epev;
   epev.events = EPOLLIN | EPOLLET;  // 监听读事件，边缘触发
@@ -46,7 +47,7 @@ IOManager::IOManager(size_t threads, bool use_main_thread, const std::string &na
 }
 
 IOManager::~IOManager() {
-  stop();
+  stop();  // stop之后拿不到写锁
   close(_epfd);
   close(_notify_fds[0]);
   close(_notify_fds[1]);
@@ -56,12 +57,12 @@ int IOManager::add_event(int fd, Event event, const std::function<void()> &cb) {
   _mutex.wrlock();
   auto it = _fd_contexts.find(fd);
   if (it == _fd_contexts.end()) {
-    _fd_contexts[fd] = std::make_shared<FdContext>();
+    _fd_contexts[fd] = std::make_shared<FdTask>();
   }
   _mutex.unlock();
 
-  FdContext::Ptr fd_ctx = _fd_contexts[fd];
-  FdContext::MutexType::Lock lock(fd_ctx->mutex);
+  FdTask::Ptr fd_ctx = _fd_contexts[fd];
+  FdTask::MutexType::Lock lock(fd_ctx->mutex);
   // 不能重复加入相同的事件
   if (UNLIKELY(fd_ctx->events & event)) {
     ErrorL << "事件重复! "
@@ -85,7 +86,7 @@ int IOManager::add_event(int fd, Event event, const std::function<void()> &cb) {
   // 更新
   fd_ctx->events = static_cast<Event>(fd_ctx->events | event);
 
-  FdContext::Task &task = fd_ctx->get_task(event);
+  FdTask::Task &task = fd_ctx->get_task(event);
   if (cb) {
     // 有cb则回调是cb
     task.cb = cb;
@@ -107,9 +108,9 @@ bool IOManager::del_event(int fd, Event event, bool trigger_task) {
     }
   }
   // 存在
-  FdContext::Ptr fd_ctx = _fd_contexts[fd];
+  FdTask::Ptr fd_ctx = _fd_contexts[fd];
 
-  FdContext::MutexType::Lock lock(fd_ctx->mutex);
+  FdTask::MutexType::Lock lock(fd_ctx->mutex);
   // fd没有对应的事件
   if (UNLIKELY(!(event & fd_ctx->events))) {
     return false;
@@ -156,9 +157,9 @@ bool IOManager::del_and_trigger_all(int fd) {
     }
   }
   // 存在
-  FdContext::Ptr fd_ctx = _fd_contexts[fd];
+  FdTask::Ptr fd_ctx = _fd_contexts[fd];
 
-  FdContext::MutexType::Lock lock(fd_ctx->mutex);
+  FdTask::MutexType::Lock lock(fd_ctx->mutex);
   // 没有任何事件
   if (!fd_ctx->events) {
     return false;
@@ -194,7 +195,7 @@ bool IOManager::del_and_trigger_all(int fd) {
 }
 IOManager *IOManager::s_get_this() { return dynamic_cast<IOManager *>(Scheduler::s_get_this()); }
 
-void IOManager::FdContext::trigger_event(Event event) {
+void IOManager::FdTask::trigger_event(Event event) {
   ASSERT(this->events & event);
   this->events = static_cast<Event>(events & ~event);
   Task &task = get_task(event);
@@ -206,7 +207,7 @@ void IOManager::FdContext::trigger_event(Event event) {
   reset_task(task);
 }
 
-IOManager::FdContext::Task &IOManager::FdContext::get_task(Event event) {
+IOManager::FdTask::Task &IOManager::FdTask::get_task(Event event) {
   switch (event) {
     case IOManager::READ:
       return readCB;
@@ -217,7 +218,7 @@ IOManager::FdContext::Task &IOManager::FdContext::get_task(Event event) {
   }
   throw std::invalid_argument("get_task invalid event");
 }
-void IOManager::FdContext::reset_task(Task &task) {
+void IOManager::FdTask::reset_task(Task &task) {
   task.cb = nullptr;
   task.fiber = nullptr;
 }
@@ -293,7 +294,7 @@ void IOManager::idle() {
         } while (err != EAGAIN);
       } else {
         auto fd_ctx = _fd_contexts[epev.data.fd];
-        FdContext::MutexType::Lock lock(fd_ctx->mutex);
+        FdTask::MutexType::Lock lock(fd_ctx->mutex);
 
         // 出现错误要触发读写事件
         if (epev.events & (EPOLLERR | EPOLLHUP)) {

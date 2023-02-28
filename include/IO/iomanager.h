@@ -24,8 +24,8 @@ class IOManager : public Scheduler, public TimerManager {
   };
 
  private:
-  struct FdContext {
-    using Ptr = std::shared_ptr<FdContext>;
+  struct FdTask {
+    using Ptr = std::shared_ptr<FdTask>;
     using MutexType = Mutex;
     struct Task {
       // 事件回调协程
@@ -47,7 +47,7 @@ class IOManager : public Scheduler, public TimerManager {
     Task writeCB;
     // 关注哪些事件
     Event events = Event::NONE;
-    FdContext::MutexType mutex;
+    FdTask::MutexType mutex;
   };
 
  public:
@@ -89,6 +89,6 @@ class IOManager : public Scheduler, public TimerManager {
   std::atomic<size_t> _pending_event_count = {0};
 
   RWMutexType _mutex;
-  std::unordered_map<int, FdContext::Ptr> _fd_contexts;
+  std::unordered_map<int, FdTask::Ptr> _fd_contexts;
 };
 }  // namespace fleet
