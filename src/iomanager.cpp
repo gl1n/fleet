@@ -47,7 +47,7 @@ IOManager::IOManager(size_t threads, bool use_main_thread, const std::string &na
 }
 
 IOManager::~IOManager() {
-  stop();  // stop之后拿不到写锁
+  stop();
   close(_epfd);
   close(_notify_fds[0]);
   close(_notify_fds[1]);
