@@ -299,7 +299,7 @@ ssize_t readv(int fd, const struct iovec *iov, int iovcnt) {
 }
 
 ssize_t recv(int sockfd, void *buf, size_t len, int flags) {
-  int ret = do_io(sockfd, recv_p, "recv", fleet::IOManager::READ, SO_RCVTIMEO, buf, len, flags);
+  return do_io(sockfd, recv_p, "recv", fleet::IOManager::READ, SO_RCVTIMEO, buf, len, flags);
 }
 
 ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen) {
