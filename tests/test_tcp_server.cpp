@@ -25,8 +25,7 @@ class EchoServer : public fleet::TCPServer {
         // 正常收到客户端的消息
         InfoL << "recv: " << buf;
         client->send(buf, n);
-      }
-      if (n == -1 && errno != ECONNRESET) {
+      } else if (n == -1 && errno != ECONNRESET) {
         // 超时
         InfoL << "recv timeout: " << client->to_string();
         client->send("bye", 4);
@@ -43,7 +42,7 @@ class EchoServer : public fleet::TCPServer {
 };
 
 void run() {
-  fleet::TCPServer::Ptr server(new EchoServer(1000 * 1));
+  fleet::TCPServer::Ptr server(new EchoServer(1000 * 1000));
   auto addr = fleet::Address::lookup_any_IPAddress("0.0.0.0:1234");
   ASSERT(addr);
 
