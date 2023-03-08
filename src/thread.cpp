@@ -29,7 +29,7 @@ void Thread::s_set_name(const std::string &name) {
   t_thread_name = name;
 }
 
-Thread::Thread(CB &&cb, const std::string &name) : _cb(std::forward<CB>(cb)), _name(name) {
+Thread::Thread(CB &&cb, const std::string &name) : _cb(std::move(cb)), _name(name) {
   if (_name.empty()) {
     _name = "UNKNOWN";
   }
@@ -65,6 +65,7 @@ void Thread::join() {
 }
 
 void *Thread::run(void *arg) {
+  // this
   Thread *thread = static_cast<Thread *>(arg);
   t_thread = thread;
   t_thread_name = thread->_name;
