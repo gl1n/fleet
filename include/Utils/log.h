@@ -99,8 +99,6 @@ class LogEventCapture {
     return *this;
   }
 
-  void clear();
-
  private:
   Logger &_logger;       // 目标logger
   LogEvent::Ptr _event;  // 生成的event

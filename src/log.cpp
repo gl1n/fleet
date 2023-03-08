@@ -71,8 +71,6 @@ LogEventCapture::~LogEventCapture() {
   }
 }
 
-void LogEventCapture::clear() { _event.reset(); }
-
 /*******************AsyncWriter*******************/
 AsyncWriter::AsyncWriter() : _exit(false) {
   _thread = std::make_shared<Thread>([this]() { this->run(); }, "Logger Async Writer");
@@ -84,6 +82,7 @@ AsyncWriter::~AsyncWriter() {
   _thread->join();
   flush_all();  // 处理run线程结束之后，this正式析构之前的Events
 }
+
 void AsyncWriter::push_event(LogEvent::Ptr event, Logger *logger) {
   {
     Mutex::Lock lock(_mtx);
@@ -91,6 +90,7 @@ void AsyncWriter::push_event(LogEvent::Ptr event, Logger *logger) {
   }
   _sem.post();
 }
+
 void AsyncWriter::run() {
   while (!_exit) {
     _sem.wait();
