@@ -70,6 +70,7 @@ Fiber::Fiber(std::function<void()> &&cb, size_t stack_size, bool run_in_schduler
   // 将man_func绑定到_ctx上，但不会立即执行
   makecontext(&_ctx, &Fiber::main_func, 0);
 }
+
 Fiber::~Fiber() {
   s_fiber_count--;
   // 子协程
@@ -95,7 +96,7 @@ void Fiber::reuse(std::function<void()> &&cb) {
   ASSERT(_stack);
   ASSERT(_state == TERMINATED || _state == EXCEPT || _state == INIT);
 
-  _cb = std::forward<std::function<void()>>(cb);
+  _cb = std::move(cb);
 
   if (getcontext(&_ctx) == -1) {
     ASSERT2(false, getcontext);
