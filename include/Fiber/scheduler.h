@@ -75,15 +75,15 @@ class Scheduler {
  private:
   template <class FiberOrCb>
   void schedule_impl(const FiberOrCb &fc, int thread) {
-    auto ft = std::make_shared<FiberAndThread>(fc, thread);
+    auto ft = std::make_shared<Task>(fc, thread);
     if (ft->fiber || ft->cb) {
-      _fiber_and_threads.push_back(ft);
+      _tasks.push_back(ft);
     }
   }
 
  private:
-  struct FiberAndThread {
-    using Ptr = std::shared_ptr<FiberAndThread>;
+  struct Task {
+    using Ptr = std::shared_ptr<Task>;
 
     // 协程
     Fiber::Ptr fiber;
@@ -93,11 +93,11 @@ class Scheduler {
     // 线程id
     uint64_t thread;
 
-    FiberAndThread(const Fiber::Ptr &fb, int thr) : fiber(fb), thread(thr) {}
+    Task(const Fiber::Ptr &fb, int thr) : fiber(fb), thread(thr) {}
 
-    FiberAndThread(const std::function<void()> &f, int thr) : cb(f), thread(thr) {}
+    Task(const std::function<void()> &f, int thr) : cb(f), thread(thr) {}
 
-    FiberAndThread() : thread(-1) {}
+    Task() : thread(-1) {}
 
     void reset() {
       fiber = nullptr;
@@ -111,7 +111,7 @@ class Scheduler {
   // 线程池
   std::vector<Thread::Ptr> _threads;
   // 待执行的协程队列
-  std::list<FiberAndThread::Ptr> _fiber_and_threads;
+  std::list<Task::Ptr> _tasks;
   // 调度器名称
   std::string _name;
   // 是否使用主线程来处理任务

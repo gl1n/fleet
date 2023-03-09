@@ -96,12 +96,12 @@ void Scheduler::run() {
   while (true) {
     bool notify_me = false;
 
-    FiberAndThread::Ptr ft = nullptr;
+    Task::Ptr ft = nullptr;
 
     {
       MutexType::Lock lock(_mutex);
-      auto it = _fiber_and_threads.begin();
-      while (it != _fiber_and_threads.end()) {
+      auto it = _tasks.begin();
+      while (it != _tasks.end()) {
         if ((*it)->thread != -1 && (*it)->thread != fleet::get_thread_id()) {
           // 如果指定了线程而且指定的线程不是此线程
           ++it;
@@ -118,11 +118,11 @@ void Scheduler::run() {
         }
 
         ft = *it;
-        it = _fiber_and_threads.erase(it);  // 从队列中删除此任务
-        ++_active_thread_count;             // 线程进入活跃状态
+        it = _tasks.erase(it);   // 从队列中删除此任务
+        ++_active_thread_count;  // 线程进入活跃状态
         break;
       }
-      notify_me |= (it != _fiber_and_threads.end());  // 还没有遍历完
+      notify_me |= (it != _tasks.end());  // 还没有遍历完
     }
     if (notify_me) {
       notify();
@@ -172,7 +172,7 @@ void Scheduler::notify() { InfoL << "notify"; }
 
 bool Scheduler::stopping() {
   MutexType::Lock lock(_mutex);
-  return _auto_stop && _stopping && _fiber_and_threads.empty() && _active_thread_count == 0;
+  return _auto_stop && _stopping && _tasks.empty() && _active_thread_count == 0;
 }
 
 void Scheduler::idle() {
