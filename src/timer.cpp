@@ -15,7 +15,7 @@ Timer::Timer(uint64_t next) : _next(next) {}
 
 bool Timer::cancel() {
   // 加锁
-  TimerManager::RWMutexType::WriteLock lock(_manager->_mutex);
+  TimerManager::RWMutexType::WriteLock lock(_manager->_timer_list_mutex);
   if (_cb) {
     _cb = nullptr;
     auto it = _manager->_timers.find(shared_from_this());
@@ -28,7 +28,7 @@ bool Timer::cancel() {
 }
 
 bool Timer::refresh() {
-  TimerManager::RWMutexType::WriteLock lock(_manager->_mutex);
+  TimerManager::RWMutexType::WriteLock lock(_manager->_timer_list_mutex);
   if (!_cb) {
     // 没有回调直接返回
     return false;
@@ -50,7 +50,7 @@ bool Timer::reset(uint64_t period, bool from_now) {
     return true;
   }
 
-  TimerManager::RWMutexType::WriteLock lock(_manager->_mutex);
+  TimerManager::RWMutexType::WriteLock lock(_manager->_timer_list_mutex);
   if (!_cb) {
     // 没有cb也不用处理
     return false;
@@ -84,7 +84,7 @@ TimerManager::~TimerManager() {}
 Timer::Ptr TimerManager::add_timer(uint64_t ms, std::function<void()> cb, bool repeat) {
   Timer::Ptr timer(new Timer(ms, cb, repeat, this));
 
-  RWMutexType::WriteLock lock(_mutex);
+  RWMutexType::WriteLock lock(_timer_list_mutex);
   // 传lock进去是为了提前释放_mutex，减少加锁时间
   add_timer(timer, lock);
   return timer;
@@ -120,7 +120,7 @@ Timer::Ptr TimerManager::add_condition_timer(uint64_t ms, std::function<void()> 
 }
 
 uint64_t TimerManager::get_next_timer() {
-  RWMutexType::ReadLock lock(_mutex);
+  RWMutexType::ReadLock lock(_timer_list_mutex);
   _tickled = false;
   if (_timers.empty()) {
     return UINT64_MAX;
@@ -137,7 +137,7 @@ uint64_t TimerManager::get_next_timer() {
 
 std::vector<std::function<void()>> TimerManager::list_expired_cb() {
   auto now_ms = get_elapsed_ms();
-  RWMutexType::WriteLock lock(_mutex);
+  RWMutexType::WriteLock lock(_timer_list_mutex);
   // 没有Timer
   if (_timers.empty()) {
     return {};
@@ -173,7 +173,7 @@ std::vector<std::function<void()>> TimerManager::list_expired_cb() {
 }
 
 bool TimerManager::has_timer() {
-  RWMutexType::ReadLock lock(_mutex);
+  RWMutexType::ReadLock lock(_timer_list_mutex);
   return !_timers.empty();
 }
 }  // namespace fleet

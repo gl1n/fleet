@@ -14,19 +14,6 @@
 static int sock_fd;
 void watch_io_read();
 
-// 用于判断连接是否成功
-void do_io_write() {
-  InfoL << "write callback";
-  int so_err = 0;
-  socklen_t len = static_cast<size_t>(so_err);
-  getsockopt(sock_fd, SOL_SOCKET, SO_ERROR, &so_err, &len);
-  if (so_err) {
-    InfoL << "connect fail";
-    return;
-  }
-  InfoL << "connect success";
-}
-
 void do_io_read() {
   InfoL << "read callback";
   char buf[1024] = {0};
@@ -66,19 +53,8 @@ void test_io() {
   inet_pton(AF_INET, baidu.c_str(), &servaddr.sin_addr.s_addr);
 
   int ret = connect(sock_fd, (const sockaddr *)&servaddr, sizeof(servaddr));
-  if (ret != 0) {
-    /* EINPROGRESS, which tells you that the operation is in progress and you should check its status later.
-    To check the status later, the socket will become ready for writability */
-    if (errno == EINPROGRESS) {
-      InfoL << "EINPROGRESS";
-      // 注册写事件，只用于判断connect是否成功
-      // 非堵塞的TCP套接字connect一般无法立即建立连接，要通过套接字可写来判断connect是否已经完成
-      fleet::IOManager::s_get_this()->add_event(sock_fd, fleet::IOManager::WRITE, do_io_write);
-      // 注册事件回调，注意：事件是一次性的
-      fleet::IOManager::s_get_this()->add_event(sock_fd, fleet::IOManager::READ, do_io_read);
-    } else {
-      ErrorL << "connect error, errno: " << errno << ", errstr: " << strerror(errno);
-    }
+  if (ret == 0) {
+    fleet::IOManager::s_get_this()->add_event(sock_fd, fleet::IOManager::READ, do_io_read);
   } else {
     ErrorL << "connect error, errno: " << errno << ", errstr: " << strerror(errno);
   }
@@ -86,7 +62,8 @@ void test_io() {
 
 int main(int argc, char **argv) {
   LOG_DEFAULT;
-  fleet::IOManager iom(2, false);
+  fleet::Logger::Instance().set_async();
+  fleet::IOManager iom(1);
 
   iom.schedule(test_io);
 }

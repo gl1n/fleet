@@ -9,7 +9,7 @@ void test_timer() {}
 int main() {
   LOG_DEFAULT;
   fleet::Logger::Instance().set_async();
-  fleet::IOManager iom(2, true);
+  fleet::IOManager iom(2);
 
   // 周期不断变大的定时器
   auto timer = iom.add_timer(

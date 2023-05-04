@@ -225,6 +225,8 @@ int connect_with_timeout(int socket, const struct sockaddr *address, socklen_t a
   if (ret == 0) {
     return 0;
   } else if (errno != EINPROGRESS) {
+    /* EINPROGRESS, which tells you that the operation is in progress and you should check its status later.
+To check the status later, the socket will become ready for writability */
     return -1;
   }
 

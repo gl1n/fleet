@@ -21,8 +21,7 @@
 
 namespace fleet {
 
-IOManager::IOManager(size_t threads, bool use_main_thread, const std::string &name)
-    : Scheduler(threads, use_main_thread, name) {
+IOManager::IOManager(size_t threads, const std::string &name) : Scheduler(threads, name) {
   _epfd = epoll_create(1000);
   ASSERT(_epfd > 0);
 
@@ -54,12 +53,12 @@ IOManager::~IOManager() {
 }
 int IOManager::add_event(int fd, Event event, const std::function<void()> &cb) {
   // 判断是否fd有对应的FdContext
-  _mutex.wrlock();
+  _event_mutex.wrlock();
   auto it = _fd_contexts.find(fd);
   if (it == _fd_contexts.end()) {
     _fd_contexts[fd] = std::make_shared<FdTask>();
   }
-  _mutex.unlock();
+  _event_mutex.unlock();
 
   FdTask::Ptr fd_ctx = _fd_contexts[fd];
   FdTask::MutexType::Lock lock(fd_ctx->mutex);
@@ -100,7 +99,7 @@ int IOManager::add_event(int fd, Event event, const std::function<void()> &cb) {
 
 bool IOManager::del_event(int fd, Event event, bool trigger_task) {
   {
-    RWMutexType::ReadLock lock(_mutex);
+    RWMutexType::ReadLock lock(_event_mutex);
     auto it = _fd_contexts.find(fd);
     if (it == _fd_contexts.end()) {
       // 不存在该fd对应的事件
@@ -139,7 +138,7 @@ bool IOManager::del_event(int fd, Event event, bool trigger_task) {
     fd_ctx->trigger_event(event);
   }
   if (!new_events) {
-    RWMutexType::WriteLock lock(_mutex);
+    RWMutexType::WriteLock lock(_event_mutex);
     _fd_contexts.erase(fd);
   }
   // 待触发事件-1
@@ -149,7 +148,7 @@ bool IOManager::del_event(int fd, Event event, bool trigger_task) {
 }
 bool IOManager::del_and_trigger_all(int fd) {
   {
-    RWMutexType::ReadLock lock(_mutex);
+    RWMutexType::ReadLock lock(_event_mutex);
     auto it = _fd_contexts.find(fd);
     if (it == _fd_contexts.end()) {
       // 不存在该fd对应的事件
@@ -186,7 +185,7 @@ bool IOManager::del_and_trigger_all(int fd) {
     --_pending_event_count;
   }
   {
-    RWMutexType::WriteLock lock(_mutex);
+    RWMutexType::WriteLock lock(_event_mutex);
     _fd_contexts.erase(fd);
   }
 
@@ -223,11 +222,31 @@ void IOManager::FdTask::reset_task(Task &task) {
   task.fiber = nullptr;
 }
 
+void IOManager::start() {
+  MutexType::Lock lock(_mutex);
+  if (!_stopping) {  // 未启动前应该是默认为true
+    return;
+  }
+  _stopping = false;  // 启动后为false，当调用stop()方法时又变为true
+
+  for (size_t i = 0; i < _thread_count; ++i) {
+    auto th = std::make_shared<Thread>(
+        [this]() {
+          set_hook_enable(true);
+          Scheduler::run();
+        },
+        _name + "_" + std::to_string(i));  // 设置线程名，好调试
+    _threads.push_back(th);
+    _thread_ids.push_back(th->get_id());  // 记录线程id
+  }
+}
+
 void IOManager::notify() {
   DebugL << "notify";
   int rt = ::write(_notify_fds[1], "1", 1);
   ASSERT(rt == 1);
 }
+
 bool IOManager::stopping() {
   uint64_t timeout = 0;
   return stopping(timeout);

@@ -60,7 +60,7 @@ int main() {
   fleet::Logger::Instance().set_async();
   // fleet::Logger::Instance().set_level(fleet::LogLevel::Info);
 
-  fleet::IOManager iom(1, true);
+  fleet::IOManager iom(1);
   iom.schedule(run);
 
   return 0;

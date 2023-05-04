@@ -51,9 +51,11 @@ class IOManager : public Scheduler, public TimerManager {
   };
 
  public:
-  IOManager(size_t threads = 1, bool use_main_thread = true, const std::string &name = "");
+  IOManager(size_t threads = 1, const std::string &name = "");
 
   ~IOManager();
+
+  void start() override;
 
   /**
    * @return -1代表失败，0代表成功
@@ -88,7 +90,7 @@ class IOManager : public Scheduler, public TimerManager {
   int _notify_fds[2];  // 0是read end, 1是write end
   std::atomic<size_t> _pending_event_count = {0};
 
-  RWMutexType _mutex;
+  RWMutexType _event_mutex;
   std::unordered_map<int, FdTask::Ptr> _fd_contexts;
 };
 }  // namespace fleet

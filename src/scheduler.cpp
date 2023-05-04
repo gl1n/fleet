@@ -14,12 +14,8 @@ namespace fleet {
 // 保存当前调度器
 static thread_local Scheduler *t_scheduler = nullptr;
 
-Scheduler::Scheduler(size_t threads, bool use_main_thread, const std::string &name)
-    : _name(name), _use_main_thread(use_main_thread) {
+Scheduler::Scheduler(size_t threads, const std::string &name) : _name(name) {
   ASSERT(threads > 0);
-  if (use_main_thread) {
-    threads--;  // 因为只需要创建thread - 1个线程
-  }
   _thread_count = threads;
 }
 
@@ -38,7 +34,6 @@ void Scheduler::start() {
     return;
   }
   _stopping = false;  // 启动后为false，当调用stop()方法时又变为true
-  ASSERT(_threads.empty());
 
   for (size_t i = 0; i < _thread_count; ++i) {
     auto th = std::make_shared<Thread>([this]() { Scheduler::run(); },
@@ -64,11 +59,11 @@ void Scheduler::stop() {
     notify();
   }
 
-  if (!stopping()) {
-    fleet::Thread::s_set_name(_name);
-    _thread_ids.push_back(fleet::get_thread_id());
-    run();
-  }
+  // if (!stopping()) {
+  //   fleet::Thread::s_set_name(_name);
+  //   _thread_ids.push_back(fleet::get_thread_id());
+  //   run();
+  // }
 
   std::vector<Thread::Ptr> thrs;
   {
@@ -86,7 +81,6 @@ void Scheduler::stop() {
 void Scheduler::run() {
   DebugL << _name << " run";
 
-  set_hook_enable(true);
   t_scheduler = this;  // 记录
 
   Fiber::s_get_this();  // 创建线程原始协程
@@ -99,10 +93,10 @@ void Scheduler::run() {
     Task::Ptr ft = nullptr;
 
     {
-      MutexType::Lock lock(_mutex);
+      MutexType::Lock lock(_task_mutex);
       auto it = _tasks.begin();
       while (it != _tasks.end()) {
-        if ((*it)->thread != -1 && (*it)->thread != fleet::get_thread_id()) {
+        if ((*it)->thread_id != -1 && (*it)->thread_id != fleet::get_thread_id()) {
           // 如果指定了线程而且指定的线程不是此线程
           ++it;
           notify_me = true;  // 没遍历完

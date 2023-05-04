@@ -6,6 +6,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -18,8 +19,9 @@ class Scheduler {
  public:
   using Ptr = std::shared_ptr<Scheduler>;
   using MutexType = Mutex;  // 方便更换
+  using thread_id_t = int;
 
-  Scheduler(size_t threads = 1, bool use_main_thread = true, const std::string &name = "");
+  Scheduler(size_t threads = 1, const std::string &name = "");
 
   virtual ~Scheduler();
 
@@ -29,29 +31,16 @@ class Scheduler {
   static Scheduler *s_get_this();
 
   // 创建scheduler的线程
-  void start();
+  virtual void start();
 
   void stop();
 
   template <class FiberOrCb>
-  void schedule(const FiberOrCb &fc, int thread = -1) {
-    {
-      MutexType::Lock lock(_mutex);
-      schedule_impl(fc, thread);
-    }
-    notify();
-  }
-
-  // 一次性传入多个协程，可以保证协程的顺序，而且只用加一次锁
-  template <class Iterator>
-  void schedule(Iterator begin, Iterator end, uint64_t thread = -1) {
-    {
-      MutexType::Lock lock(_mutex);
-      auto iter = begin;
-      while (iter != end) {
-        schedule_impl(*iter, thread);
-        iter++;
-      }
+  void schedule(const FiberOrCb &fc, thread_id_t thread_id = -1) {
+    auto ft = std::make_shared<Task>(fc);
+    if (ft->fiber || ft->cb) {
+      MutexType::Lock lock(_task_mutex);
+      _tasks.push_back(ft);
     }
     notify();
   }
@@ -73,15 +62,6 @@ class Scheduler {
   bool has_idle_threads() { return _idle_thread_count > 0; }
 
  private:
-  template <class FiberOrCb>
-  void schedule_impl(const FiberOrCb &fc, int thread) {
-    auto ft = std::make_shared<Task>(fc, thread);
-    if (ft->fiber || ft->cb) {
-      _tasks.push_back(ft);
-    }
-  }
-
- private:
   struct Task {
     using Ptr = std::shared_ptr<Task>;
 
@@ -89,46 +69,45 @@ class Scheduler {
     Fiber::Ptr fiber;
     // 函数
     std::function<void()> cb;
+    // 指定线程号
+    thread_id_t thread_id;
 
-    // 线程id
-    uint64_t thread;
+    Task(const Fiber::Ptr &fb, thread_id_t ti = -1) : fiber(fb), thread_id(ti) {}
 
-    Task(const Fiber::Ptr &fb, int thr) : fiber(fb), thread(thr) {}
+    Task(const std::function<void()> &f, thread_id_t ti = -1) : cb(f), thread_id(ti) {}
 
-    Task(const std::function<void()> &f, int thr) : cb(f), thread(thr) {}
-
-    Task() : thread(-1) {}
+    Task() = default;
 
     void reset() {
       fiber = nullptr;
       cb = nullptr;
-      thread = -1;
     }
   };
 
  private:
-  MutexType _mutex;
-  // 线程池
-  std::vector<Thread::Ptr> _threads;
-  // 待执行的协程队列
+  // 待执行的任务队列
   std::list<Task::Ptr> _tasks;
-  // 调度器名称
-  std::string _name;
-  // 是否使用主线程来处理任务
-  bool _use_main_thread;
-
- protected:
-  //
-  std::vector<int> _thread_ids;
-  // 线程数量
-  size_t _thread_count = 0;
+  // 是否自动停止(暂时不知道是什么作用)
+  bool _auto_stop = false;
   // 工作线程数
   std::atomic<size_t> _active_thread_count = {0};
   // 空闲线程数
   std::atomic<size_t> _idle_thread_count = {0};
-  // 是否自动停止(暂时不知道是什么作用)
-  bool _auto_stop = false;
+  // 任务锁
+  MutexType _task_mutex;
+
+ protected:
+  // 线程池
+  std::vector<Thread::Ptr> _threads;
+  // 调度器名称
+  std::string _name;
+  //
+  std::vector<int> _thread_ids;
+  // 线程数量
+  size_t _thread_count = 0;
   // 是否正在停止，默认为true
   bool _stopping = true;
+  // 启动或关闭时使用
+  MutexType _mutex;
 };
 }  // namespace fleet

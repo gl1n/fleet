@@ -77,7 +77,7 @@ class TimerManager {
   virtual void add_timer(Timer::Ptr timer, RWMutexType::WriteLock &lock);
 
  private:
-  RWMutexType _mutex;
+  RWMutexType _timer_list_mutex;
   // 定时器集合
   std::set<Timer::Ptr, Timer::Comparator> _timers;
 
