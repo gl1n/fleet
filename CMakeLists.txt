@@ -13,7 +13,6 @@ add_definitions(
 aux_source_directory(src SRC_LIST)
 set(SRC_LIST
   ${SRC_LIST}
-  third_party/ByteBufferCpp/ByteBuffer.cpp
 )
 add_library(
   ${PROJECT_NAME}_static STATIC ${SRC_LIST}
