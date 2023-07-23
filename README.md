@@ -1,7 +1,12 @@
 ## 一个C++协程网络库
-### TODO
-- [ ] 将任务分成指定线程和非指定线程两类，分别保存，Scheduler::run函数要直接处理自己线程的任务
-- [ ] 将定时器任务放到队首，更快地执行定时任务
-- [ ] 在短时任务中互斥锁替换成自旋锁
-- [ ] 创建一个内存池，用来复用Fiber申请的内存
-- [ ] 创建协程池
+```bash
+❯ ./webbench -c 2000 -t 50 http://127.0.0.1:1234/
+Webbench - Simple Web Benchmark 1.5
+Copyright (c) Radim Kolar 1997-2004, GPL Open Source Software.
+
+Benchmarking: GET http://127.0.0.1:1234/
+2000 clients, running 50 sec.
+
+Speed=2429830 pages/min, 2956290 bytes/sec.
+Requests: 2024859 susceed, 0 failed.
+```
