@@ -1,18 +1,18 @@
 #include <cstdlib>
 
-#include "Utils/env.h"
-#include "Utils/log.h"
+#include "env.h"
+#include "log.h"
 
 int main(int argc, char **argv) {
   LOG_DEFAULT;
   auto &env = fleet::Env::Instance();
   env.add_help("h", "print this help messagge");
   bool is_print_help = false;
-  //解析失败，打印help消息
+  // 解析失败，打印help消息
   if (!env.init(argc, argv)) {
     is_print_help = true;
   }
-  //有-h，也打印help
+  // 有-h，也打印help
   if (env.has("h")) {
     is_print_help = true;
   }

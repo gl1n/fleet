@@ -8,9 +8,9 @@
 #include <memory>
 #include <unordered_map>
 
-#include "Fiber/scheduler.h"
-#include "IO/timer.h"
-#include "Thread/mutex.h"
+#include "scheduler.h"
+#include "timer.h"
+#include "mutex.h"
 
 namespace fleet {
 class IOManager : public Scheduler, public TimerManager {

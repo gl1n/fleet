@@ -6,8 +6,8 @@
 #include <memory>
 #include <string>
 
-#include "Thread/mutex.h"
-#include "Utils/uncopyable.h"
+#include "mutex.h"
+#include "uncopyable.h"
 
 namespace fleet {
 class Thread : private Uncopyable {

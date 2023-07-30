@@ -3,8 +3,8 @@
 #include <sys/socket.h>
 #include <memory>
 
-#include "Network/address.h"
-#include "Utils/uncopyable.h"
+#include "address.h"
+#include "uncopyable.h"
 
 namespace fleet {
 class Socket : public std::enable_shared_from_this<Socket>, Uncopyable {

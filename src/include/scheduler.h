@@ -10,9 +10,9 @@
 #include <utility>
 #include <vector>
 
-#include "Fiber/fiber.h"
-#include "Thread/mutex.h"
-#include "Thread/thread.h"
+#include "fiber.h"
+#include "mutex.h"
+#include "thread.h"
 
 namespace fleet {
 class Scheduler {

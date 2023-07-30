@@ -8,10 +8,10 @@
 #include <string>
 #include <utility>
 
-#include "Thread/mutex.h"
-#include "Utils/env.h"
-#include "Utils/log.h"
-#include "Utils/utils.h"
+#include "mutex.h"
+#include "env.h"
+#include "log.h"
+#include "utils.h"
 
 namespace fleet {
 

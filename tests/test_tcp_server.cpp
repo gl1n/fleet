@@ -2,12 +2,13 @@
 #include <unistd.h>
 #include <cstdint>
 #include <cstring>
-#include "IO/iomanager.h"
-#include "Network/address.h"
-#include "Network/socket.h"
-#include "Network/tcp_server.h"
-#include "Utils/log.h"
-#include "Utils/macro.h"
+
+#include "address.h"
+#include "iomanager.h"
+#include "log.h"
+#include "macro.h"
+#include "socket.h"
+#include "tcp_server.h"
 
 //
 class EchoServer : public fleet::TCPServer {

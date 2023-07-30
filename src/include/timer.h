@@ -6,7 +6,8 @@
 #include <set>
 #include <vector>
 
-#include "Thread/mutex.h"
+#include "mutex.h"
+
 namespace fleet {
 
 class TimerManager;

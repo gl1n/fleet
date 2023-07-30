@@ -13,9 +13,9 @@
 #include <thread>
 #include <utility>
 
-#include <Utils/list.h>
-#include "Thread/mutex.h"
-#include "Thread/thread.h"
+#include "list.h"
+#include "mutex.h"
+#include "thread.h"
 
 namespace fleet {
 

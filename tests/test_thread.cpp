@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "Thread/mutex.h"
-#include "Thread/thread.h"
-#include "Utils/env.h"
-#include "Utils/log.h"
-#include "Utils/utils.h"
+#include "env.h"
+#include "log.h"
+#include "mutex.h"
+#include "thread.h"
+#include "utils.h"
 
 fleet::Mutex s_mutex;
 int count = 0;

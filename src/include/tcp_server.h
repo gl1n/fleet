@@ -5,10 +5,10 @@
 #include <memory>
 #include <vector>
 
-#include "IO/iomanager.h"
-#include "Network/address.h"
-#include "Network/socket.h"
-#include "Utils/uncopyable.h"
+#include "iomanager.h"
+#include "address.h"
+#include "socket.h"
+#include "uncopyable.h"
 
 namespace fleet {
 class TCPServer : public std::enable_shared_from_this<TCPServer>, private Uncopyable {

@@ -1,10 +1,10 @@
 #include <memory>
 #include <vector>
 
-#include "Fiber/fiber.h"
-#include "Thread/thread.h"
-#include "Utils/log.h"
-#include "Utils/utils.h"
+#include "fiber.h"
+#include "log.h"
+#include "thread.h"
+#include "utils.h"
 
 int main(int argc, char **argv) {
   LOG_DEFAULT;

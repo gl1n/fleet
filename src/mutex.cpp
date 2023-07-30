@@ -2,7 +2,7 @@
 #include <exception>
 #include <stdexcept>
 
-#include "Thread/mutex.h"
+#include "mutex.h"
 
 namespace fleet {
 Semaphore::Semaphore(uint32_t count) {

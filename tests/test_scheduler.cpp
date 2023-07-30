@@ -1,9 +1,10 @@
 
 #include <unistd.h>
 #include <memory>
-#include "Fiber/scheduler.h"
-#include "Utils/log.h"
-#include "Utils/utils.h"
+
+#include "log.h"
+#include "scheduler.h"
+#include "utils.h"
 
 void test_fiber() {
   static int s_count = 5;

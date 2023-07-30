@@ -1,6 +1,6 @@
-#include "IO/iomanager.h"
-#include "IO/timer.h"
-#include "Utils/log.h"
+#include "iomanager.h"
+#include "log.h"
+#include "timer.h"
 
 static int timeout = 1000;
 

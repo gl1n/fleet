@@ -5,10 +5,11 @@
 #include <cerrno>
 #include <cstring>
 #include <string>
-#include "IO/fd_manager.h"
-#include "IO/hook.h"
-#include "IO/iomanager.h"
-#include "Utils/log.h"
+
+#include "fd_manager.h"
+#include "hook.h"
+#include "iomanager.h"
+#include "log.h"
 
 void test_sleep() {
   InfoL << "test_sleep begin";

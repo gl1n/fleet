@@ -11,13 +11,13 @@
 #include <stdexcept>
 #include <vector>
 
-#include "Fiber/fiber.h"
-#include "Fiber/scheduler.h"
-#include "IO/fd_manager.h"
-#include "IO/hook.h"
-#include "IO/iomanager.h"
-#include "Utils/log.h"
-#include "Utils/macro.h"
+#include "fiber.h"
+#include "scheduler.h"
+#include "fd_manager.h"
+#include "hook.h"
+#include "iomanager.h"
+#include "log.h"
+#include "macro.h"
 
 namespace fleet {
 

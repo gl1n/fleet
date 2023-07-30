@@ -4,8 +4,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Thread/mutex.h"
-#include "Utils/uncopyable.h"
+#include "mutex.h"
+#include "uncopyable.h"
 
 namespace fleet {
 class Env {

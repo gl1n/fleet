@@ -3,7 +3,7 @@
 #include <string>
 #include <thread>
 
-#include <Utils/log.h>
+#include "log.h"
 
 int main() {
   LOG_DEFAULT;

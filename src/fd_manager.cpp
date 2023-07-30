@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <memory>
 
-#include "IO/fd_manager.h"
-#include "Thread/mutex.h"
+#include "fd_manager.h"
+#include "mutex.h"
 
 namespace fleet {
 

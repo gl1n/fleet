@@ -10,9 +10,9 @@
 #include <mutex>
 #include <thread>
 
-#include <Utils/log.h>
-#include "Fiber/fiber.h"
-#include "Utils/utils.h"
+#include <log.h>
+#include "fiber.h"
+#include "utils.h"
 
 namespace fleet {
 

@@ -1,7 +1,8 @@
 #include <unistd.h>
-#include "Thread/mutex.h"
-#include "Thread/thread.h"
-#include "Utils/log.h"
+
+#include "log.h"
+#include "mutex.h"
+#include "thread.h"
 
 int main() {
   LOG_DEFAULT;

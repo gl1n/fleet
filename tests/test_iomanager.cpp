@@ -7,9 +7,9 @@
 #include <cstddef>
 #include <cstring>
 
-#include "IO/iomanager.h"
-#include "Utils/log.h"
-#include "Utils/macro.h"
+#include "iomanager.h"
+#include "log.h"
+#include "macro.h"
 
 static int sock_fd;
 void watch_io_read();

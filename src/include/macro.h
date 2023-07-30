@@ -1,8 +1,9 @@
 #pragma once
 
 #include <assert.h>
-#include "Utils/log.h"
-#include "Utils/utils.h"
+
+#include "log.h"
+#include "utils.h"
 
 #if defined __GNUC__ || defined __llvm__
 

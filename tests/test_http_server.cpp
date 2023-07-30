@@ -1,9 +1,10 @@
 #include <unistd.h>
 #include <cstring>
 #include <thread>
-#include "Network/tcp_server.h"
-#include "Utils/log.h"
-#include "Utils/macro.h"
+
+#include "log.h"
+#include "macro.h"
+#include "tcp_server.h"
 
 //
 class HTTPServer : public fleet::TCPServer {

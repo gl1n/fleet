@@ -6,8 +6,8 @@
 #include <memory>
 #include <string>
 
-#include "Network/address.h"
-#include "Utils/log.h"
+#include "address.h"
+#include "log.h"
 
 namespace fleet {
 

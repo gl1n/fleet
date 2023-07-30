@@ -4,9 +4,9 @@
 #include <stdexcept>
 #include <utility>
 
-#include "Thread/thread.h"
-#include "Utils/log.h"
-#include "Utils/utils.h"
+#include "thread.h"
+#include "log.h"
+#include "utils.h"
 
 namespace fleet {
 
