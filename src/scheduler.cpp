@@ -111,7 +111,6 @@ void Scheduler::run() {
           continue;
         }
 
-        task = *it;
         it = _tasks.erase(it);   // 从队列中删除此任务
         ++_active_thread_count;  // 线程进入活跃状态
         break;
